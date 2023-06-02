@@ -1,0 +1,177 @@
+
+//
+//  CompanySettingResponse.swift
+//  EyeOnTask
+//
+//  Created by Hemant-Aplite on 03/05/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+import Foundation
+
+class DefaultSettingResponse: Codable {
+    var success: Bool?
+    var message: String?
+    var data: DefaultSettings?
+
+}
+
+class DefaultSettings: Codable {
+    var rights :  [[String:Int]]?
+    var code: String?
+    var sub: String?
+    var des: String?
+    var type: String?
+    var isGpsEnable: String?
+    var usr_compid: String?
+    var duration: String?
+    var jobCurrentTime: String?
+    var jobSchedule: String?
+    var isFWgpsEnable: String?
+    var trkDuration: String?
+    var trkDistance: String?
+    var adminIds : [String]?
+    var expireStatus: Int?
+    var ispaid: String?
+    var isHideContact: String?
+    var isHideTravelBtn : String?
+    var isCustomerEnable: String?
+    var lngFileName: String?
+    var lat: String?
+    var lng: String?
+    var comp_permission : [[String:String]]?
+    var language : selectedLanguageDetails?
+    var languageList : [languageDetails]?
+    var forceupdate_version : String?
+    var version : String?
+    var checkId : String?
+    var isJobLatLngEnable : String?
+    var numAfterDecimal : String?
+    var isLandmarkEnable : String?
+    var staticJobId : String?
+    var isClientChatEnable : String?
+    var isOnetoOneChatEnable : String?
+    var trkStartingHour : String?
+    var trkEndingHour : String?
+    var isActivityLogEnable : String?
+}
+
+
+class selectedLanguageDetails: Codable {
+    var fileName : String?
+    var filePath : String?
+    var isLock : String?
+    var isDefault : String?
+    var version : String?
+}
+
+class languageDetails: Codable {
+    var fileName : String?
+    var filePath : String?
+    var lngId : String?
+    var nativeName : String?
+    var version : String?
+}
+
+
+
+/*
+ {
+ "success": true,
+ "message": "usr_found",
+ "data": {
+ //"isGpsEnable": "1",
+ //"usr_compid": "1",
+ "rights": [{
+ "isClientVisible": 0,
+ "isPaymentVisible": 0,
+ "isItemVisible": 0,
+ "isInvoiceVisible": 0
+ }],
+ "duration": "02:00",
+ "jobCurrentTime": "",
+ "jobSchedule": "1559536200",
+ "isFWgpsEnable": "1",
+ "trkDuration": "1",
+ "trkDistance": "100",
+ "adminIds": ["1", "16", "110", "170", "171", "174", "182", "188", "206", "226", "227", "234", "236", "249", "251", "259", "260"],
+ "expireStatus": 1,
+ "ispaid": "0",
+ "isHideContact": "1",
+ "isCustomerEnable": "0",
+ "lngFileName": "en_uk_22",
+ "lat": "0.0",
+ "lng": "0.0",
+ "comp_permission": [{
+ "moduleId": "1",
+ "description": "0",
+ "discount": "0",
+ "rate": "0",
+ "tax": "1",
+ "amount": "1",
+ "hsncode": "0",
+ "unit": "0",
+ "taxamnt": "0",
+ "pno": "0",
+ "shipto": "0",
+ "isItemEnable": "0",
+ "supplierCost": "0"
+ }, {
+ "moduleId": "2",
+ "description": "0",
+ "discount": "1",
+ "rate": "0",
+ "tax": "0",
+ "amount": "0",
+ "hsncode": "1",
+ "unit": "1",
+ "taxamnt": "1",
+ "pno": "0",
+ "shipto": "1",
+ "isItemEnable": "0",
+ "supplierCost": "1"
+ }],
+ "language": {
+ "fileName": "en",
+ "filePath": "uploads\/languageFile\/mobile\/",
+ "isLock": "0",
+ "isDefault": "1",
+ "version": "0.1"
+ },
+ "languageList": [{
+ "lngId": "1",
+ "fileName": "en",
+ "filePath": "uploads\/languageFile\/mobile\/",
+ "nativeName": "English",
+ "version": "0.1"
+ }, {
+ "lngId": "2",
+ "fileName": "hi",
+ "filePath": "uploads\/languageFile\/mobile\/",
+ "nativeName": "Hindi",
+ "version": "0.1"
+ }, {
+ "lngId": "3",
+ "fileName": "el",
+ "filePath": "uploads\/languageFile\/mobile\/",
+ "nativeName": "Greek",
+ "version": "0.1"
+ }, {
+ "lngId": "4",
+ "fileName": "nl",
+ "filePath": "uploads\/languageFile\/mobile\/",
+ "nativeName": "Dutch",
+ "version": "0.1"
+ }, {
+ "lngId": "5",
+ "fileName": "es",
+ "filePath": "uploads\/languageFile\/mobile\/",
+ "nativeName": "Spanish",
+ "version": "0.1"
+ }],
+ "checkId": "14",
+ "version": "1.6",
+ "forceupdate_version": "1.6"
+ }
+ }
+ */

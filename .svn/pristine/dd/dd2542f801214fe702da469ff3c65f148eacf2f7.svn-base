@@ -1,0 +1,199 @@
+//
+//  HistoryVC.swift
+//  EyeOnTask
+//
+//  Created by Apple on 11/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+
+class HistoryVC: UIViewController, UITableViewDelegate, UITableViewDataSource {
+  
+    
+    @IBOutlet var table_view: UITableView!
+    
+    var objOfUserJobListInDetail : UserJobList?
+    var arrOfShowData = [HistoryResDetails]()
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        self.title = LanguageKey.title_history
+    
+        ActivityLog(module:Modules.job.rawValue , message: ActivityMessages.jobHistory)
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        GetHistoryList()
+        //self.parent?.title = "History"
+        
+        self.tabBarController?.navigationItem.title = LanguageKey.title_history
+        
+        if let button = self.parent?.navigationItem.rightBarButtonItem {
+            button.isEnabled = false
+            button.tintColor = UIColor.clear
+        }
+    }
+    
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return arrOfShowData.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell") as! HistoryCell
+        
+        let historyResDetails = arrOfShowData[indexPath.row]
+        
+        let status = taskStatus(taskType: taskStatusType(rawValue: Int(historyResDetails.status! == "0" ? "1" : historyResDetails.status!)!)!)
+        cell.imgView_Status.image = status.1
+        let statusText = status.0.replacingOccurrences(of: " Task", with: "")
+        
+        
+        if(indexPath.row % 2 == 0){
+            
+            if historyResDetails.referencebyType == "1"{
+                cell.lbl_1.text = historyResDetails.referencebyName
+            }else{
+                cell.lbl_1.text = historyResDetails.referencebyName! + " (A)"
+            }
+            
+            
+            // cell.lbl_2.text = dateFormateWithMonthandDayAndYears(timeInterval: historyResDetails.time!)
+            
+            cell.lbl_2.text = dateFormateWithMonthandDayAndYearsShowDayAndTime(timeInterval: historyResDetails.time!)
+            
+            cell.lbl_LeftStatus.text = statusText
+            cell.lbl_1.isHidden = false
+            cell.lbl_2.isHidden = false
+            cell.lbl_LeftStatus.isHidden = false
+            cell.lbl_3.isHidden = true
+            cell.lbl_4.isHidden = true
+            cell.lbl_RightStatus.isHidden = true
+        }else{
+            cell.lbl_1.isHidden = true
+            cell.lbl_2.isHidden = true
+            cell.lbl_LeftStatus.isHidden = true
+            cell.lbl_3.isHidden = false
+            cell.lbl_4.isHidden = false
+            cell.lbl_RightStatus.isHidden = false
+            
+            if historyResDetails.referencebyType == "1"{
+                cell.lbl_3.text = historyResDetails.referencebyName
+            }  else {
+                cell.lbl_3.text = historyResDetails.referencebyName! + " (A)"
+            }
+            
+            //cell.lbl_3.text = historyResDetails.name
+            //cell.lbl_4.text = dateFormateWithMonthandDayAndYears(timeInterval: historyResDetails.time!)
+            
+            cell.lbl_4.text = dateFormateWithMonthandDayAndYearsShowDayAndTime(timeInterval: historyResDetails.time!)
+            
+            cell.lbl_RightStatus.text = statusText
+
+        }
+        
+        return cell
+    }
+    
+    
+    //==============================
+    // MARK:- Get Task Status Image
+    //==============================
+    func taskStatus(taskType : taskStatusType) -> (String, UIImage){
+        switch taskType {
+        case .New:
+            return ( "New Task",UIImage(named: "New_Task")!)
+        case .Accepted:
+            return ( "Accepted Task",UIImage(named: "Accepted_task")!)
+        case .Reject:
+            return ( "Reject Task",UIImage(named: "Rejected_task")!)
+        case .Cancel:
+            return ( "Cancel Task",UIImage(named: "cancel_task")!)
+        case .Travelling:
+            return ( "Travelling Task",UIImage(named: "Travelling_task")!)
+        case .Break:
+            return ( "Break Task",UIImage(named: "break_task")!)
+        case .InProgress:
+            return ( "In Progress Task",UIImage(named: "In_progress_task")!)
+        case .OnHold:
+            return ( "On Hold Task",UIImage(named: "Pending_task")!)
+        case .Completed:
+            return ( "Completed Task",UIImage(named: "Complete_task")!)
+        default:
+            return ( "Closed Task",UIImage(named: "closed_task")!)
+        }
+    }
+    
+    func GetHistoryList() -> Void {
+       
+        if !isHaveNetowork() {
+            return
+        }
+        
+        showLoader()
+        
+        let param = Params()
+        param.compId = getUserDetails()?.compId
+        param.usrId = getUserDetails()?.usrId
+        param.jobId = objOfUserJobListInDetail?.jobId
+        param.limit = "50"
+        param.index = "0"
+        
+        serverCommunicator(url: Service.JobStatusHistory , param: param.toDictionary) { (response, success) in
+            
+            killLoader()
+            
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(HistoryResponse.self, from: response as! Data) {
+                    if decodedData.success == true{
+                        DispatchQueue.main.async{
+                            if( decodedData.data.count > 0){
+                                let obj = decodedData.data[0]
+                                if (obj.jobid != nil && obj.jobid != ""){ //Only For Remove job when Admin Unassign job for FW
+                                    var dict = [String : Any]()
+                                     dict["data"] = [ "status_code" : obj.status_code! ,
+                                                 "jobid" : obj.jobid!]
+                                    NotiyCenterClass.fireJobRemoveNotifier(dict: (dict))
+                                    self.tabBarController?.navigationController?.popToRootViewController(animated: true)
+
+                                }else{
+                                    self.arrOfShowData = decodedData.data
+                                    self.table_view.reloadData()
+                                }
+                            }
+                        }
+                    }else{
+                        if let code =  decodedData.statusCode{
+                            if(code == "401"){
+                                ShowAlert(title:  getServerMsgFromLanguageJson(key: decodedData.message!), message:"" , controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                    if (Ok){
+                                        DispatchQueue.main.async {
+                                            (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                        }
+                                    }
+                                })
+                            }
+                        }else{
+                            ShowError(message:  getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+                      
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                }
+                
+            }else{
+               ShowError(message: errorString, controller: windowController)
+            }
+        }
+        
+        
+        
+    }
+    
+
+}

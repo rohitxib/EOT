@@ -1,0 +1,41 @@
+//
+//  AddClientResponse.swift
+//  EyeOnTask
+//
+//  Created by mac on 14/06/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+
+class AddClientResponse: Codable {
+    var success: Bool?
+    var count: String?
+    var data: AddClientDetails
+    var  message : String?
+}
+
+
+class AddClientDetails : Codable{
+    var accid: String?
+    var acctype: String?
+    var adr: String?
+    var city: String?
+    var cltId: String?
+    var cnm: String?
+    var conId: String?
+    var ctry: String?
+    var email: String?
+    var gstNo: String?
+    var industry: String?
+    var isactive: String?
+    var mob1: String?
+    var mob2: String?
+    var nm: String?
+    var note: String?
+    var pymtType: String?
+    var siteId: String?
+    var snm: String?
+    var state: String?
+    var tinNo: String?
+}

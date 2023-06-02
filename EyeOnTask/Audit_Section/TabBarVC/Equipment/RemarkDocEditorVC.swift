@@ -1,0 +1,137 @@
+//
+//  RemarkDocEditorVC.swift
+//  EyeOnTask
+//
+//  Created by Altab on 30/09/20.
+//  Copyright © 2020 Hemant. All rights reserved.
+//
+
+import UIKit
+import WebKit
+class RemarkDocEditorVC: UIViewController, PhotoEditorDelegate {
+
+  
+        var image : UIImage?
+       private var editedimage : UIImage?
+        var name : String?
+        var docUrl : URL?
+        var isSignature = false
+        @IBOutlet weak var imgView: UIImageView!
+        @IBOutlet weak var webView: WKWebView!
+        @IBOutlet weak var txtname: UITextField!
+        @IBOutlet weak var txtView: UITextView!
+        var callback: ((UIImage,String,String) -> Void)?
+        var callbackForDocument: ((String,String) -> Void)?
+        @IBOutlet weak var btnUpload: UIButton!
+        @IBOutlet weak var lblDocDes: UILabel!
+        @IBOutlet weak var lblDocname: UILabel!
+        @IBOutlet weak var btnCustomise: UIButton!
+        
+      //  @IBOutlet weak var equalWidth: NSLayoutConstraint!
+        @IBOutlet weak var custmiseButtonWidth: NSLayoutConstraint!
+        
+        @IBOutlet weak var trailingUploadbutton: NSLayoutConstraint!
+        
+    @IBOutlet weak var upLoadBtnWth: NSLayoutConstraint!
+    override func viewDidLoad() {
+            super.viewDidLoad()
+
+            lblDocname.text = LanguageKey.doc_name
+            lblDocDes.text = LanguageKey.doc_des_op
+            
+            btnUpload.setTitle(LanguageKey.save_btn, for: .normal)
+            btnCustomise.setTitle(LanguageKey.customize, for: .normal)
+            
+             txtname.text = name ?? ""
+            
+            
+            ActivityLog(module:Modules.job.rawValue , message: ActivityMessages.jobDocumentDetails)
+            
+            
+            if let img = image {
+                imgView.image = img
+                webView.isHidden = true
+                editedimage = img
+            }else{
+                
+                if isSignature {
+                    lblDocname.isHidden  = true
+                    txtname.isHidden = true
+                    lblDocDes.isHidden = true
+                    txtView.isHidden = true
+                    btnCustomise.isHidden = true
+                    btnUpload.isHidden = true
+                }else{
+                    btnUpload.isHidden = false
+                    btnCustomise.isHidden = true
+                 //   equalWidth.priority = UILayoutPriority(rawValue: 999.0)
+                    upLoadBtnWth.constant = 305 // custmiseButtonWidth.constant+trailingUploadbutton.constant
+                    custmiseButtonWidth.constant = 0.0
+                    trailingUploadbutton.constant = 0.0
+                    imgView.isHidden = true
+                }
+                
+                
+                
+                if let fileUrl = docUrl {
+                    self.webView.load(NSURLRequest(url: fileUrl) as URLRequest)
+                }
+            }
+        }
+        
+        @IBAction func tapAction(_ sender: Any) {
+            EXPhotoViewer.showImage(from: imgView)
+        }
+        
+        
+        @IBAction func btnUplaod(_ sender: Any) {
+            if callback != nil {
+                callback!(editedimage!,txtname.text!,txtView.text!)
+            }
+            
+            if callbackForDocument != nil {
+                callbackForDocument!(txtname.text!,txtView.text!)
+            }
+        }
+        
+        
+        @IBAction func btnCustomise(_ sender: Any) {
+            self.showPhotoEditor(withImage:image! ,andImageName: trimString(string: name ?? ""))
+        }
+        
+        
+        func showPhotoEditor(withImage:UIImage, andImageName:String) -> Void {
+             DispatchQueue.main.async {
+                 let photoEditor = PhotoEditorViewController(nibName:"PhotoEditorViewController",bundle: Bundle(for: PhotoEditorViewController.self))
+                 photoEditor.photoEditorDelegate = self
+                 photoEditor.hiddenControls = [.sticker, .text, .save, .share]
+                 photoEditor.image = withImage
+                 photoEditor.imageName = andImageName
+                 photoEditor.imageNamePlaceholder = LanguageKey.enter_file_name
+                 photoEditor.isJobDocument = true
+                
+                     photoEditor.modalPresentationStyle = .fullScreen
+                     self.present(photoEditor, animated: true, completion: nil)
+                 }
+         }
+         
+         
+         func doneEditing(image: UIImage, imageName: String) {
+             
+             //IQKeyboardManager.shared.enable = true
+             
+             self.editedimage = image
+            
+             DispatchQueue.main.async {
+                 self.imgView.image = image
+             }
+         }
+         
+         
+         func canceledEditing() {
+    //         DispatchQueue.main.async {
+    //            // APP_Delegate.hideBackButtonText()
+    //         }
+         }
+
+}

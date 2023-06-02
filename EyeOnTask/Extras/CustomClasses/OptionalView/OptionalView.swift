@@ -1,0 +1,128 @@
+//
+//  OptionalView.swift
+//  EyeOnTask
+//
+//  Created by mac on 01/06/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+
+
+
+protocol OptionViewDelegate {
+    
+    func optionView(_ tableView: UITableView, numberOfRowsInSection section: Int) ->Int;
+    func optionView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell ;
+    func optionView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) ;
+    func optionView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat
+
+}
+
+
+
+class OptionalView: UIView, UITableViewDelegate, UITableViewDataSource{
+ 
+
+    @IBOutlet var bgBtn: UIButton!
+    @IBOutlet var table_View: UITableView?
+    var delegate : OptionViewDelegate?
+    var removeOptionVwCallback: ((Bool) -> Void)?
+    
+    class func instanceFromNib() -> UIView {
+        return UINib(nibName: "OptionalView", bundle: nil).instantiate(withOwner: nil, options: nil)[0] as! UIView
+    }
+    
+
+    
+    func setUpMethod(frame :CGRect){
+        DispatchQueue.main.async {
+            
+            
+            self.frame = CGRect(x: 0, y: 0, width: UIScreen.main.bounds.width, height:  UIScreen.main.bounds.height)
+            self.changeBgColorBlure()
+            
+            self.table_View = UITableView()
+            //self.table_View?.frame = CGRect(x: 0, y: 0 , width: self.frame.size.width
+                  //  , height:  self.frame.size.height)
+            self.table_View?.frame = frame
+            
+            self.table_View?.delegate = self
+            self.table_View?.dataSource = self
+ 
+            self.table_View?.showsVerticalScrollIndicator = false
+            self.table_View?.backgroundColor = UIColor.init(red: 224.0/255.0, green: 246.0/255.0, blue: 247.0/255.0, alpha: 1)
+            
+            self.table_View?.layer.cornerRadius = 3
+            self.table_View?.borderWidth = 1.0
+            self.table_View?.borderColor = UIColor.darkGray//UIColor.init(red: 44.0/255.0, green: 114.0/255.0, blue: 122.0/255.0, alpha: 1)
+            self.table_View?.backgroundColor = UIColor.white
+            self.table_View?.clipsToBounds = true
+            self.addSubview(self.table_View!)
+            self.showOptionalview()
+             }
+    }
+    
+    
+
+    func showOptionalview(){
+        let rect = self.table_View?.frame
+        table_View?.frame = CGRect(x: (rect?.origin.x)!, y: (rect?.origin.y)!, width: (rect?.size.width)!, height: 0)
+        
+        UIView.animate(withDuration: 0.2) {
+            self.table_View?.frame = CGRect(x: (rect?.origin.x)!, y: (rect?.origin.y)!, width: (rect?.size.width)!, height: (rect?.size.height)!)
+        }
+   }
+
+    @IBAction func bgBtnAction(_ sender: Any) {
+         //self.removeFromSuperview()
+        
+        if self.removeOptionVwCallback != nil {
+            removeOptionVwCallback!(true)
+        }
+        
+        
+ 
+    }
+    func changeBgColorBlure(){
+       // self.bgBtn.backgroundColor = UIColor.init(red: 5.0/255.0, green: 164.0/255.0, blue: 174.0/255.0, alpha: 1)
+        self.bgBtn.alpha = 0.0
+        
+        UIView.animate(withDuration:  0.1) {
+               self.bgBtn.alpha = 0.2
+        }
+    }
+    
+   
+    
+    func removeOptionalview(){
+        
+        UIView.animate(withDuration: 0.1, animations: {
+            self.table_View?.transform = CGAffineTransform(scaleX: 1.0, y: 0.01)
+
+        }) { (finished) in
+            self.removeFromSuperview()
+        }
+    
+    }
+    
+    
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return  (self.delegate?.optionView(tableView, numberOfRowsInSection:section))!
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        return (self.delegate?.optionView(tableView, cellForRowAt:indexPath))!
+    }
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        return (self.delegate?.optionView(tableView ,didSelectRowAt:indexPath))!
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return (self.delegate?.optionView(tableView , heightForRowAt:indexPath))!
+    }
+    
+
+
+}

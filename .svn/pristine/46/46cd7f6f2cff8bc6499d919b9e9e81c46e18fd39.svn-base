@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<model type="com.apple.IDECoreDataModeler.DataModel" documentVersion="1.0" lastSavedToolsVersion="16119" systemVersion="19E266" minimumToolsVersion="Automatic" sourceLanguage="Swift" userDefinedModelVersionIdentifier="">
+    <entity name="ClientContactList" representedClassName="ClientContactList" syncable="YES" codeGenerationType="class">
+        <attribute name="cltId" optional="YES" attributeType="String"/>
+        <attribute name="cnm" optional="YES" attributeType="String"/>
+        <attribute name="conId" optional="YES" attributeType="String"/>
+        <attribute name="def" optional="YES" attributeType="String"/>
+        <attribute name="email" optional="YES" attributeType="String"/>
+        <attribute name="fax" optional="YES" attributeType="String"/>
+        <attribute name="isdelete" optional="YES" attributeType="String"/>
+        <attribute name="mob1" optional="YES" attributeType="String"/>
+        <attribute name="mob2" optional="YES" attributeType="String"/>
+        <attribute name="skype" optional="YES" attributeType="String"/>
+        <attribute name="tempId" optional="YES" attributeType="String"/>
+        <attribute name="twitter" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="ClientList" representedClassName="ClientList" syncable="YES" codeGenerationType="class">
+        <attribute name="accid" optional="YES" attributeType="String"/>
+        <attribute name="acctype" optional="YES" attributeType="String"/>
+        <attribute name="adr" optional="YES" attributeType="String"/>
+        <attribute name="city" optional="YES" attributeType="String"/>
+        <attribute name="cltId" optional="YES" attributeType="String"/>
+        <attribute name="cnm" optional="YES" attributeType="String"/>
+        <attribute name="conId" optional="YES" attributeType="String"/>
+        <attribute name="ctry" optional="YES" attributeType="String"/>
+        <attribute name="email" optional="YES" attributeType="String"/>
+        <attribute name="extra" optional="YES" attributeType="String"/>
+        <attribute name="gstNo" optional="YES" attributeType="String"/>
+        <attribute name="industry" optional="YES" attributeType="String"/>
+        <attribute name="isactive" optional="YES" attributeType="String"/>
+        <attribute name="isdelete" optional="YES" attributeType="String"/>
+        <attribute name="lastcontsycTime" optional="YES" attributeType="String"/>
+        <attribute name="lastSitesycTime" optional="YES" attributeType="String"/>
+        <attribute name="lat" optional="YES" attributeType="String"/>
+        <attribute name="lng" optional="YES" attributeType="String"/>
+        <attribute name="mob1" optional="YES" attributeType="String"/>
+        <attribute name="mob2" optional="YES" attributeType="String"/>
+        <attribute name="nm" optional="YES" attributeType="String"/>
+        <attribute name="note" optional="YES" attributeType="String"/>
+        <attribute name="pymtType" optional="YES" attributeType="String"/>
+        <attribute name="siteId" optional="YES" attributeType="String"/>
+        <attribute name="snm" optional="YES" attributeType="String"/>
+        <attribute name="state" optional="YES" attributeType="String"/>
+        <attribute name="tempId" optional="YES" attributeType="String"/>
+        <attribute name="tinNo" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="ClientSitList" representedClassName="ClientSitList" syncable="YES" codeGenerationType="class">
+        <attribute name="adr" optional="YES" attributeType="String"/>
+        <attribute name="city" optional="YES" attributeType="String"/>
+        <attribute name="cltId" optional="YES" attributeType="String"/>
+        <attribute name="ctry" optional="YES" attributeType="String"/>
+        <attribute name="def" optional="YES" attributeType="String"/>
+        <attribute name="isdelete" optional="YES" attributeType="String"/>
+        <attribute name="lat" optional="YES" attributeType="String"/>
+        <attribute name="lng" optional="YES" attributeType="String"/>
+        <attribute name="siteId" optional="YES" attributeType="String"/>
+        <attribute name="snm" optional="YES" attributeType="String"/>
+        <attribute name="state" optional="YES" attributeType="String"/>
+        <attribute name="tempId" optional="YES" attributeType="String"/>
+        <attribute name="zip" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="ErrorsList" representedClassName="ErrorsList" syncable="YES" codeGenerationType="class">
+        <attribute name="apiUrl" optional="YES" attributeType="String"/>
+        <attribute name="requestParam" optional="YES" attributeType="String"/>
+        <attribute name="response" optional="YES" attributeType="String"/>
+        <attribute name="time" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+        <attribute name="version" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="FieldWorkerDetails" representedClassName="FieldWorkerDetails" syncable="YES" codeGenerationType="class">
+        <attribute name="email" optional="YES" attributeType="String"/>
+        <attribute name="fnm" optional="YES" attributeType="String"/>
+        <attribute name="img" optional="YES" attributeType="String"/>
+        <attribute name="isactive" optional="YES" attributeType="String"/>
+        <attribute name="lat" optional="YES" attributeType="String"/>
+        <attribute name="lng" optional="YES" attributeType="String"/>
+        <attribute name="lnm" optional="YES" attributeType="String"/>
+        <attribute name="mob1" optional="YES" attributeType="String"/>
+        <attribute name="usrId" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="OfflineList" representedClassName="OfflineList" syncable="YES" codeGenerationType="class">
+        <attribute name="apis" optional="YES" attributeType="String"/>
+        <attribute name="parametres" optional="YES" attributeType="String"/>
+        <attribute name="time" optional="YES" attributeType="Date" usesScalarValueType="NO"/>
+    </entity>
+    <entity name="TagsList" representedClassName="TagsList" syncable="YES" codeGenerationType="class">
+        <attribute name="tagId" optional="YES" attributeType="String"/>
+        <attribute name="tnm" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="UserAccType" representedClassName="UserAccType" syncable="YES" codeGenerationType="class">
+        <attribute name="accId" optional="YES" attributeType="String"/>
+        <attribute name="compId" optional="YES" attributeType="String"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="UserJobList" representedClassName="UserJobList" syncable="YES" codeGenerationType="class">
+        <attribute name="adr" optional="YES" attributeType="String"/>
+        <attribute name="athr" optional="YES" attributeType="String"/>
+        <attribute name="city" optional="YES" attributeType="String"/>
+        <attribute name="cltId" optional="YES" attributeType="String"/>
+        <attribute name="cnm" optional="YES" attributeType="String"/>
+        <attribute name="complNote" optional="YES" attributeType="String"/>
+        <attribute name="conId" optional="YES" attributeType="String"/>
+        <attribute name="createDate" optional="YES" attributeType="String"/>
+        <attribute name="ctry" optional="YES" attributeType="String"/>
+        <attribute name="des" optional="YES" attributeType="String"/>
+        <attribute name="email" optional="YES" attributeType="String"/>
+        <attribute name="extra" optional="YES" attributeType="String"/>
+        <attribute name="inst" optional="YES" attributeType="String"/>
+        <attribute name="isdelete" optional="YES" attributeType="String"/>
+        <attribute name="jobId" optional="YES" attributeType="String"/>
+        <attribute name="jtId" optional="YES" attributeType="Transformable"/>
+        <attribute name="kpr" optional="YES" attributeType="String"/>
+        <attribute name="label" optional="YES" attributeType="String"/>
+        <attribute name="landmark" optional="YES" attributeType="String"/>
+        <attribute name="lat" optional="YES" attributeType="String"/>
+        <attribute name="lng" optional="YES" attributeType="String"/>
+        <attribute name="mob1" optional="YES" attributeType="String"/>
+        <attribute name="mob2" optional="YES" attributeType="String"/>
+        <attribute name="nm" optional="YES" attributeType="String"/>
+        <attribute name="parentId" optional="YES" attributeType="String"/>
+        <attribute name="prty" optional="YES" attributeType="String"/>
+        <attribute name="quotId" optional="YES" attributeType="String"/>
+        <attribute name="schdlFinish" optional="YES" attributeType="String"/>
+        <attribute name="schdlStart" optional="YES" attributeType="String"/>
+        <attribute name="siteId" optional="YES" attributeType="String"/>
+        <attribute name="skype" optional="YES" attributeType="String"/>
+        <attribute name="snm" optional="YES" attributeType="String"/>
+        <attribute name="state" optional="YES" attributeType="String"/>
+        <attribute name="status" optional="YES" attributeType="String"/>
+        <attribute name="tagData" optional="YES" attributeType="Transformable"/>
+        <attribute name="tempId" optional="YES" attributeType="String"/>
+        <attribute name="twitter" optional="YES" attributeType="String"/>
+        <attribute name="type" optional="YES" attributeType="String"/>
+        <attribute name="updateDate" optional="YES" attributeType="String"/>
+        <attribute name="zip" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="UserJobTittleNm" representedClassName="UserJobTittleNm" syncable="YES" codeGenerationType="class">
+        <attribute name="des" optional="YES" attributeType="String"/>
+        <attribute name="jtId" optional="YES" attributeType="String"/>
+        <attribute name="labour" optional="YES" attributeType="String"/>
+        <attribute name="taxData" optional="YES" attributeType="Transformable"/>
+        <attribute name="title" optional="YES" attributeType="String"/>
+    </entity>
+    <entity name="Users" representedClassName="Users" syncable="YES" codeGenerationType="class">
+        <attribute name="fnm" optional="YES" attributeType="String"/>
+        <attribute name="img" optional="YES" attributeType="String"/>
+        <attribute name="lnm" optional="YES" attributeType="String"/>
+        <attribute name="readcount" optional="YES" attributeType="String"/>
+        <attribute name="usrId" optional="YES" attributeType="String"/>
+    </entity>
+    <elements>
+        <element name="ClientContactList" positionX="-54" positionY="144" width="128" height="225"/>
+        <element name="ClientList" positionX="-63" positionY="135" width="128" height="465"/>
+        <element name="ClientSitList" positionX="-54" positionY="135" width="128" height="240"/>
+        <element name="ErrorsList" positionX="-54" positionY="135" width="128" height="120"/>
+        <element name="FieldWorkerDetails" positionX="-63" positionY="135" width="128" height="180"/>
+        <element name="OfflineList" positionX="-54" positionY="135" width="128" height="90"/>
+        <element name="TagsList" positionX="-54" positionY="135" width="128" height="75"/>
+        <element name="UserAccType" positionX="-63" positionY="135" width="128" height="90"/>
+        <element name="UserJobList" positionX="-63" positionY="-18" width="128" height="645"/>
+        <element name="UserJobTittleNm" positionX="-63" positionY="135" width="128" height="120"/>
+        <element name="Users" positionX="-54" positionY="135" width="128" height="118"/>
+    </elements>
+</model>

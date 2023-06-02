@@ -1,0 +1,90 @@
+//
+//  QuotationRes.swift
+//  EyeOnTask
+//
+//  Created by Hemant Pandagre on 15/07/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+import Foundation
+
+class QuotationRes: Codable {
+    var success: Bool?
+    var message: String?
+    var data: [QuotationData]?
+    var statusCode: String?
+    var count: String?
+}
+
+
+class QuotationData: Codable {
+    var quotId: String?
+    var label: String?
+    var des: String?
+    var status: String?
+    var adr: String?
+    var nm: String?
+    var snm: String?
+    var total: String?
+    var duedate: String?
+    var quotDate: String?
+    var cltId:String?
+    var assignByUser:String?
+    var jtId: [jtIdArray]?
+}
+
+//{"quotId":"554","cltId":"1122","label":"App24","des":"","status":"1","adr":"24 Tennyson Road","nm":"Hannah\u00a0E\u00a0Drurysf","snm":"self","total":"0.0000","duedate":"1598535660","quotDate":"1598535660","assignByUser":"301","jtId":[{"jtId":"228","title":"carpainter"},{"jtId":"297","title":"Computer maintenance"}]}
+/*
+ quotId -> quotation id
+ invId -> invoice id
+ type -> type
+ rate -> rate
+ qty -> quantity
+ discount -> discount
+ des -> description
+ taxData -> tax Array
+ totalAmount -> total amount
+ */
+
+class QuoteItem: Codable {
+    var iqmmId: String?
+    var quotId: String?
+    var itemId: String?
+    var invId: String?
+    var type: String?
+    var rate: String?
+    var qty: String?
+    var discount: String?
+    var des: String?
+    var hsncode: String?
+    var pno: String?
+    var unit: String?
+    var taxamnt: String?
+    var supplierCost: String?
+    var jtId: String?
+    var totalAmount: String?
+    var isInvOrNoninv: String?
+    var taxData: [taxData]?
+    var inm : String?
+    
+    
+}
+
+
+/*  "quotId -> quotation id
+ itemId -> item id
+ invId -> invoice id
+ type -> type[1- item ,2- fieldworker, 3- job title]
+ rate -> rate
+ qty -> quantity
+ discount -> discount
+ des -> description
+ hsncode -> hsncode
+ pno -> pno
+ unit -> unit
+ taxamnt -> tax calculation amount
+ supplierCost -> supplier cost
+ jtId -> job title id
+ totalAmount -> after calculation total amount
+ isInvOrNoninv -> 1- inventory , 2 - Non Inventory
+ taxData -> tax Array"*/

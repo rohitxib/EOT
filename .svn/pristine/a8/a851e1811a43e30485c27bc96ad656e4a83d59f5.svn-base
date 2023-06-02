@@ -1,0 +1,529 @@
+//
+//  EOT_Global.swift
+//  EyeOnTask
+//
+//  Created by Hemant Pandagre on 25/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import Foundation
+import UIKit
+import CoreData
+
+var authenticationToken : String? = ""
+var roundOff : String = "4"
+var taxCalculationType = ""
+let EOT_VAR = "EOT_VAR"
+var gpsStatusVariable : GPSstatus?
+var batteryLevel: String { String(Int(UIDevice.current.batteryLevel*100))}
+
+
+//=======================================
+// Font color
+//=======================================
+func Color_NormalFont() -> UIColor {
+    return UIColor.init(red: 115.0/255.0, green: 125.0/255.0, blue: 126.0/255.0, alpha: 1.0)
+}
+
+
+//=======================================
+// Round off function
+//=======================================
+func roundOff(value : Double) -> String {
+    let calculation = String(format: "%.\(roundOff)f", value)
+    return calculation
+}
+
+//=======================================
+// Save Company Settings
+//=======================================
+func saveDefaultSettings(userDetails : DefaultSettings ) -> Void {
+    let encoder = JSONEncoder()
+    if let encoded = try? encoder.encode(userDetails) {
+        UserDefaults.standard.set(encoded, forKey: "DefSetting")
+        UserDefaults.standard.synchronize()
+    }
+}
+
+//=======================================
+// Fetch Company Settings
+//=======================================
+func getDefaultSettings() -> DefaultSettings? {
+    let decoder = JSONDecoder()
+    if let questionData = UserDefaults.standard.data(forKey: "DefSetting"){
+        let question = try? decoder.decode(DefaultSettings.self, from:questionData)
+        return question ?? nil
+    }
+    return nil
+}
+
+func removeDefaultSettings() -> Void {
+    UserDefaults.standard.removeObject(forKey: "DefSetting")
+}
+
+
+
+//=======================================
+// Save User's Details
+//=======================================
+func saveUserDetails(userDetails : LoginData ) -> Void {
+    let encoder = JSONEncoder()
+    if let encoded = try? encoder.encode(userDetails) {
+        authenticationToken = userDetails.token
+        UserDefaults.standard.set(encoded, forKey: "userinfo")
+        UserDefaults.standard.synchronize()
+    }
+}
+
+//=======================================
+// Fetch User's Details
+//=======================================
+func getUserDetails() -> LoginData? {
+    let decoder = JSONDecoder()
+    if let questionData = UserDefaults.standard.data(forKey: "userinfo"){
+        let question = try? decoder.decode(LoginData.self, from:questionData)
+        return question ?? nil
+    }
+    return nil
+}
+
+//=======================================
+// Save Current Language
+//=======================================
+func saveCurrentSelectedLanguage(filename:String) {
+    UserDefaults.standard.set(filename, forKey: "currentLang")
+    UserDefaults.standard.synchronize()
+}
+
+func saveCurrentSelectedLanguageCode(filename:String) {
+    UserDefaults.standard.set(filename, forKey: "currentLangCod")
+    UserDefaults.standard.synchronize()
+}
+
+//=======================================
+// Get Current Language
+//=======================================
+func getCurrentSelectedLanguage() -> String? {
+    if let languageId = UserDefaults.standard.value(forKey: "currentLang") as? String {
+        return languageId
+    }else{
+        return nil
+    }
+}
+
+func getCurrentSelectedLanguageCode() -> String? {
+    if let languageId = UserDefaults.standard.value(forKey: "currentLangCod") as? String {
+        return languageId
+    }else{
+        return nil
+    }
+}
+
+
+
+func navigateToLoginPage() -> Void {
+    DispatchQueue.main.async {
+        logoutFromAllEnvirements()
+        (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+    }
+}
+
+
+
+
+
+func logoutFromAllEnvirements() -> Void {
+   
+    
+     if (UserDefaults.standard.value(forKey: "login") != nil &&  UserDefaults.standard.value(forKey: "login") as! Bool) == true {
+        
+        
+            NotiyCenterClass.removeBatteryLevelNotifier()
+            
+            if ChatManager.shared.isFirebaseAuthenticate() {
+                
+                setGpsStatusOnFirebase(status: GPSstatus.logout)
+                //Set user status offline on firebase
+                ChatManager.shared.removeAllListeners()
+                ChatManager.shared.ref.cancelDisconnectOperations()
+                ChatManager.shared.setStatusOffline {
+                   ChatManager.shared.SignoutUserFromFirebase() // firebase logout when user logout from the app
+                   ChatManager.shared.ref.database.goOffline()
+               }
+                 
+            }
+            
+            if APP_Delegate.startLocationTask != nil {
+                APP_Delegate.startLocationTask?.cancel()
+            }
+            
+            if APP_Delegate.stopLocationTask != nil {
+                APP_Delegate.stopLocationTask?.cancel()
+                LocationManager.shared.stopTracking() // Stop live tracking when user logout from the app
+            }
+            
+        }
+    
+     UserDefaults.standard.set(false, forKey: "login")
+      //removeDefaultSettings()
+     UserDefaults.standard.synchronize()
+    
+   
+}
+
+
+func setGpsStatusOnFirebase(status : GPSstatus) -> Void {
+    if gpsStatusVariable != status {
+        gpsStatusVariable = status
+        let path = ChatManager.shared.getGPSstatusPathOnFirebase()
+        ChatManager.shared.ref.child(path).setValue(status.rawValue)
+    }
+}
+
+func ActivityLog(module: String, message: String) {
+    if let activitylog = getDefaultSettings()?.isActivityLogEnable {
+        if activitylog == "1" {
+            let param = ActivityParams(module: module, message: message)
+            DatabaseClass.shared.saveActivityOffline(service: Service.insertActivityLog, param: param)
+        }
+    }
+}
+
+//=======================================
+// Save Current serverUrl
+//=======================================
+func saveCurrentServerUrl(url:String) {
+    UserDefaults.standard.set(url, forKey: "serverUrl")
+    UserDefaults.standard.synchronize()
+}
+
+//=======================================
+// Get Current Language
+//=======================================
+func getCurrentServerUrl() -> String? {
+    if let url = UserDefaults.standard.value(forKey: "serverUrl") as? String {
+        return url
+    }else{
+        return nil
+    }
+}
+
+//=======================================
+// Save Current serverUrl
+//=======================================
+func saveCheckInId(checkinId:String) {
+    UserDefaults.standard.set(checkinId, forKey: "checkid")
+    UserDefaults.standard.synchronize()
+}
+
+//=======================================
+// Get Current Language
+//=======================================
+func getCheckInId() -> String? {
+    if let checkinId = UserDefaults.standard.value(forKey: "checkid") as? String {
+        return checkinId
+    }else{
+        return nil
+    }
+}
+
+
+
+
+//=======================================
+// Save Current Language
+//=======================================
+func saveDefaultLanugage(lanugage : selectedLanguageDetails) -> Void{
+    let encoder = JSONEncoder()
+    if let encoded = try? encoder.encode(lanugage) {
+        UserDefaults.standard.set(encoded, forKey: "defLanguage")
+        UserDefaults.standard.synchronize()
+    }
+}
+
+//=======================================
+// Get Current Language
+//=======================================
+func getDefaultLanugage() -> selectedLanguageDetails? {
+    let decoder = JSONDecoder()
+    if let languageData = UserDefaults.standard.data(forKey: "defLanguage"){
+        let lanugage = try? decoder.decode(selectedLanguageDetails.self, from:languageData)
+        return lanugage ?? nil
+    }
+    return nil
+}
+
+//=============================================
+//Permissions for show and hide some features
+//=============================================
+func isPermitForShow(permission : permissions) -> Bool {
+    // false - Hide,
+    // true - Show
+    if let isHide = getDefaultSettings()?.rights![0][permission.rawValue] {
+        if isHide == 1 {
+          return false //isHide
+        }else{
+            return true //isShow
+        }
+    }
+    return true //isShow
+}
+
+//=======================================
+//Permissions for items section fields
+//=======================================
+func compPermissionVisible(permission : compPermission) -> Bool {
+    // false - Hide,
+    // true - Show
+    
+    if let dict = getDefaultSettings()?.comp_permission!.filter({$0["moduleId"] == "1"}) {
+        if dict.count > 0 {
+            if dict[0][permission.rawValue] == "0" {
+                return true //isShow
+            }else{
+                return false //isHide
+            }
+        }
+    }
+    
+    return true //isHide
+}
+
+//=======================================
+//for get string with roundoff the value
+//=======================================
+func getValueFromString(value : String?) -> String {
+    if (value != nil) {
+        if value == "" {
+            return roundOff(value: 0.0)
+        }else{
+            return roundOff(value: Double(value!)!)
+        }
+    }else{
+        return roundOff(value: 0.0)
+    }
+}
+
+//============================
+//For calculate total amount
+//============================
+func calculateAmount(quantity:Double, rate:Double, tax:Double, discount:Double) -> Double {
+    
+    if (taxCalculationType == "0"){
+        let totalAmount = (quantity * rate + quantity * ((rate*tax)/100)) -  quantity * ((rate*discount)/100)
+        return totalAmount
+    }else{
+        // New formula
+
+        let newRate = (rate - ((rate * discount) / 100));
+        return quantity * ( newRate + ((newRate * tax) / 100));
+    }
+}
+
+//============================
+// For calculate total tax
+//============================
+func calculateTaxAmount(rate:Double,qty:Int, taxRateInPercentage:Double) -> Double {
+    let taxAmount = ((rate*taxRateInPercentage)/100)*Double(qty)
+    return taxAmount
+}
+
+
+//======================================
+// For Save files on document directory
+//======================================
+
+func getDirectoryPath() -> String {
+    let paths = NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)
+    let documentsDirectory = paths[0]
+    return documentsDirectory
+}
+
+func saveFileInDocumentDirectory(url: String, fileName: String){
+    let fileManager = FileManager.default
+    let paths = (getDirectoryPath() as NSString).appendingPathComponent(fileName)
+    let pdfDoc = NSData(contentsOf:URL(string: url)!)
+    fileManager.createFile(atPath: paths as String, contents: pdfDoc as Data?, attributes: nil)
+}
+
+
+func loadFileFromDocumentDirectory(fileName:String) -> String? { // this is return document path
+    let fileManager = FileManager.default
+    let documentoPath = (getDirectoryPath() as NSString).appendingPathComponent(fileName)
+    
+    if fileManager.fileExists(atPath: documentoPath){
+       return documentoPath
+    }
+    else {
+       // print("document was not found")
+        return nil
+    }
+}
+
+
+func removeFileFromDocumentDirectory(fileName: String) -> Void {
+    let fileManager = FileManager.default
+    let documentoPath = (NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0] as NSString).appendingPathComponent(fileName)
+    
+    if fileManager.fileExists(atPath: documentoPath){
+        do {
+            try fileManager.removeItem(atPath: documentoPath)
+            print("file Removed")
+        } catch {
+            print("error removing file:", error)
+        }
+    }else {
+        print("document was not found")
+    }
+}
+
+//======================================
+// For Tap on New job notification
+//======================================
+func newJobNotificationHandler(notificationDict : [String : Any]?) -> Void {
+    killLoader()
+    let vc = UIStoryboard.init(name: "Main", bundle: Bundle.main).instantiateViewController(withIdentifier: "jobsvc") as? JobVC
+    vc?.isBackButton = true
+    
+    DispatchQueue.main.async {
+        let navCon = NavClientController(rootViewController: vc!)
+        navCon.modalPresentationStyle = .fullScreen
+        windowController.present(navCon, animated: true, completion: nil)
+    }
+}
+
+//======================================
+// For Tap on Admin chat notification
+//======================================
+func adminChatNotificationHandler(notificationDict : [String : Any]?) -> Void {
+     killLoader()
+
+    if let dict = notificationDict{
+         let storyBoard : UIStoryboard = UIStoryboard(name: "MainJob", bundle:nil)
+
+        if APP_Delegate.currentJobTab != nil {
+            
+            if APP_Delegate.currentJobTab?.objOfUserJobList?.jobId == "\(dict["jobId"]!)" {
+                
+                let  isItem = isPermitForShow(permission: permissions.isItemVisible)
+                if isItem {
+                    APP_Delegate.currentJobTab?.selectedIndex = 2
+                }else{
+                    APP_Delegate.currentJobTab?.selectedIndex = 1
+                }
+                return
+            }else{
+                ChatManager.shared.listenerForjob?.remove()
+                APP_Delegate.currentJobTab!.dismiss(animated: true, completion: nil)
+                APP_Delegate.currentJobTab!.navigationController?.popViewController(animated: true)
+            }
+        }
+
+             let arrOFUserData = DatabaseClass.shared.fetchDataFromDatabse(entityName: "UserJobList", query: nil) as! [UserJobList]
+             APP_Delegate.currentJobTab = (storyBoard.instantiateViewController(withIdentifier: "jobTab") as! JobTabController)
+             APP_Delegate.currentJobTab!.jobs = arrOFUserData
+
+                let query = "jobId = '\(dict["jobId"]!)'"
+                let currentJob = DatabaseClass.shared.fetchDataFromDatabse(entityName: "UserJobList", query: query) as! [UserJobList]
+
+               if currentJob.count > 0 {
+                APP_Delegate.currentJobTab!.objOfUserJobList = currentJob[0]
+                APP_Delegate.currentJobTab!.isChatTabSelected = true
+                
+                   DispatchQueue.main.async {
+                    let navCon = NavClientController(rootViewController: APP_Delegate.currentJobTab!)
+                    navCon.modalPresentationStyle = .fullScreen
+                    windowController.present(navCon, animated: true, completion: nil)
+                   }
+               }else{
+
+                   let mess = AlertMessage.sorryThisJobNoLonger
+                   let newString = mess.replacingOccurrences(of: EOT_VAR, with: "'\(dict["jobCode"] as! String)'")
+                    ShowError(message: newString, controller: windowController)
+               }
+            }
+      }
+
+
+//======================================
+// For Tap on Client chat notification
+//======================================
+func clientChatNotificationHandler(notificationDict : [String : Any]?) -> Void {
+    
+    killLoader()
+    if let dict = notificationDict {
+        let vc = UIStoryboard.init(name: "MainClientChat", bundle: Bundle.main).instantiateViewController(withIdentifier: "CLIENTCHATE") as? ClientChatVC
+        
+        let query = "jobId = '\(dict["jobId"]!)'"
+        let currentJob = DatabaseClass.shared.fetchDataFromDatabse(entityName: "UserJobList", query: query) as! [UserJobList]
+        
+        if currentJob.count > 0 {
+            vc!.objOfUserJobListInDetail = currentJob[0]
+            DispatchQueue.main.async {
+                let navCon = NavClientController(rootViewController: vc!)
+                navCon.modalPresentationStyle = .fullScreen
+                windowController.present(navCon, animated: true, completion: nil)
+            }
+        }
+    }
+}
+
+
+//=========================================
+// For Tap on one to one chat notification
+//========================================
+func one2oneChatNotificationHandler(notificationDict : [String : Any]?) -> Void {
+    
+    killLoader()
+    if let dict = notificationDict {
+        let vc = UIStoryboard.init(name: "MainAdminChat", bundle: Bundle.main).instantiateViewController(withIdentifier: "GROUPCHAT") as? AdminChatVC
+        
+        let senderId = (dict["senderid"] ?? "") as! String
+        
+        if ChatManager.shared.userModels.count > 0 {
+            let userModel = ChatManager.shared.userModels.filter({$0.user?.usrId == senderId})
+            
+            if userModel.count > 0 {
+                let userDetails = userModel[0]
+                if userDetails.isInactive == false {
+                    vc?.userData = userDetails
+                    DispatchQueue.main.async {
+                        let navCon = NavClientController(rootViewController: vc!)
+                        navCon.modalPresentationStyle = .fullScreen
+                        windowController.present(navCon, animated: true, completion: nil)
+                    }
+                }else{
+                     windowController.showToast(message: LanguageKey.trying_to_chat)
+                }
+            }
+        }else{
+            APP_Delegate.appOpenFrom121ChatNotificationUser = senderId
+        }
+        
+        
+        
+        
+    }
+}
+
+
+//======================================
+// For Tap on Client chat notification
+//======================================
+func AuditNotificationHandler() -> Void {
+    if APP_Delegate.currentVC == "auditvc" || APP_Delegate.currentVC == "barcode" {
+        //ShowError(message: "inNotifire", controller: windowController)
+        NotiyCenterClass.fireRefreshAuditistNotifier(dict: [:])
+    }else{
+        let vc = UIStoryboard(name: "MainAudit", bundle: nil).instantiateViewController(withIdentifier: "audit") as! AuditVC;
+        vc.isNotificationClick = true
+
+        DispatchQueue.main.async {
+            let navCon = NavClientController(rootViewController: vc)
+            navCon.modalPresentationStyle = .fullScreen
+            windowController.present(navCon, animated: true, completion: nil)
+        }
+        
+        
+    }
+}

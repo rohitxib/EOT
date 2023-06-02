@@ -1,0 +1,672 @@
+//
+//  SideMenuVC.swift
+//  EyeOnTask
+//
+//  Created by Apple on 11/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+//import BarcodeScanner
+import AVFoundation
+
+class SideMenuVC: UIViewController {
+
+    @IBOutlet weak var btnUpdate: UIButton!
+    @IBOutlet weak var lblLogout: UILabel!
+    @IBOutlet weak var tableSideMenu: UITableView!
+    @IBOutlet weak var lblEyeontask: UILabel!
+    @IBOutlet var user_Img: UIImageView!
+    @IBOutlet weak var lblUsername: UILabel!
+    @IBOutlet weak var lblUseremail: UILabel!
+    @IBOutlet weak var versionUpdateLbl: UILabel!
+    var menus = [SideMenuModel]()
+    var languageIndex = 2
+    var indicator : UIActivityIndicatorView?
+    var  getAuditId : AuditListData?
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+//       // self.btnUpdate.layer.cornerRadius = 20
+//        self.btnUpdate.layer.shadowColor = UIColor.black.cgColor
+//        self.btnUpdate.layer.shadowOpacity = 0.5
+//        self.btnUpdate.layer.shadowRadius = 2.0
+//       // self.btnUpdate.layer.shadowOffset =
+        
+        
+      self.btnUpdate.isHidden = true
+       self.pulsate()
+    }
+    
+   
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        // Dispose of any resources that can be recreated.
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        // Show and hide Update button ///////
+        
+        if let setttings = getDefaultSettings(){
+            if let latestVersion = Float(setttings.version!){
+                  let appVersion : Float = Float(String(describing: Bundle.main.infoDictionary!["CFBundleShortVersionString"]!))!
+
+                if latestVersion > appVersion {
+                    self.btnUpdate.isHidden = false
+                    self.pulsate()
+                }else{
+                    self.btnUpdate.isHidden = true
+                }
+            }else{
+                self.btnUpdate.isHidden = true
+            }
+        }else{
+            self.btnUpdate.isHidden = true
+        }
+        
+       
+        
+        
+        
+        
+        APP_Delegate.currentVC = "sidemenu"
+        
+        let fnm = getUserDetails()?.fnm ?? "Unknown"
+        let lnm = getUserDetails()?.lnm ?? "Unknown"
+        
+        lblUsername.text = fnm + " \(lnm)"  //getUserDetails()?.fnm ?? "Unknown"
+        lblUseremail.text = getUserDetails()?.email ?? ""
+
+        let result = SideMenu.getModel()
+        menus = result.0
+        languageIndex = result.1
+        
+        lblLogout.text = LanguageKey.logout
+         self.btnUpdate.setTitle(LanguageKey.update, for: .normal)
+        tableSideMenu.alwaysBounceVertical = false
+        setVersion()
+        tableSideMenu.reloadData()
+
+        setProfilePic()
+        self.revealViewController().frontViewController.view.isUserInteractionEnabled = false
+        self.revealViewController().view.addGestureRecognizer(self.revealViewController().panGestureRecognizer())
+    }
+    
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        
+        
+        self.revealViewController().frontViewController.view.isUserInteractionEnabled = true
+    }
+    
+    func setVersion() -> Void {
+        let versionNumber = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") ?? "1.0"
+        let mess = LanguageKey.eye_on_task_version
+        let newString = mess.replacingOccurrences(of: EOT_VAR, with: "\(versionNumber)")
+        self.versionUpdateLbl.text = newString
+    }
+    
+    @IBAction func btnUpDetPressed(_ sender: Any) {
+        
+        
+        
+        ShowAlert(title: LanguageKey.new_version , message: AlertMessage.checkVersion, controller: windowController, cancelButton: LanguageKey.cancel as NSString, okButton: LanguageKey.update as NSString, style: .alert) { (cancel, update) in
+           
+            
+            if update {
+                if let link = URL(string: Constants.APPSTORE_URL) {
+                    UIApplication.shared.open(link)
+                     self.btnUpdate.isHidden = true
+                }
+            }
+        }
+      
+    }
+    
+    
+    @IBAction func btnLogoutPressed(_ sender: Any) {
+        
+        ActivityLog(module: Modules.logout.rawValue, message: ActivityMessages.sideMenuLogout)
+        
+        logoutFromAllEnvirements()
+        self.performSegue(withIdentifier: "popLogout", sender: nil)
+        if isHaveNetowork() {
+            let param = Params()
+            param.udId = getUserDetails()?.udId
+            serverCommunicator(url: Service.logout, param: param.toDictionary) { (response, success) in
+                //print(response)
+            }
+        }else{
+            ShowError(message: AlertMessage.checkNetwork, controller: windowController)
+        }
+    }
+    
+    
+    
+    @IBAction func switchToggle(_ sender: UISwitch) {
+        
+        if sender.isOn {
+            UserDefaults.standard.set(true, forKey: "permission")
+        }else{
+            UserDefaults.standard.set(false, forKey: "permission")
+        }
+    }
+    
+    // pulsate style of Button  :-
+    
+    func pulsate() {
+        
+        let pulse = CASpringAnimation(keyPath: "transform.scale")
+        pulse.duration = 0.6
+        pulse.fromValue = 0.95
+        pulse.toValue = 1.0
+        pulse.autoreverses = true
+        pulse.repeatCount = 2
+        pulse.initialVelocity = 0.5
+        pulse.damping = 1.0
+        btnUpdate.layer.add(pulse, forKey: "pulse")
+        
+        
+    }
+    
+    func setProfilePic() -> Void {
+        
+        DispatchQueue.global().async {
+            
+            if  getUserDetails()?.img != "" &&   getUserDetails()?.img != nil{
+                let combineUrl =  String(format: "%@%@", Service.BaseUrl, (getUserDetails()?.img)!)
+                
+                DispatchQueue.main.async{
+                    self.user_Img.image = UIImage(named: "User");
+                }
+                let imgUrl = URL(string:combineUrl)
+                
+                let img = ImageCaching.sharedInterface().getImage(imgUrl?.absoluteString)
+                if((img) != nil){
+                    DispatchQueue.main.async {
+                        self.user_Img.image = img
+                    }
+                }else{
+                    if (imgUrl != nil){
+                        if  let data = try? Data(contentsOf: imgUrl!){//make sure your
+                            let image = UIImage(data: data)
+                            OperationQueue.main.addOperation({
+                                if((image) != nil){
+                                    self.user_Img.image = image
+                                    ImageCaching.sharedInterface().setImage(image, withID: imgUrl?.absoluteString)
+                                }
+                            })
+                        }else{
+                            DispatchQueue.main.async{
+                                self.user_Img.image = UIImage(named: "User");
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    
+    @objc func sectionHeaderWasTouched(_ sender: UITapGestureRecognizer) {
+        let headerView = sender.view as UIView?
+        let section    = headerView!.tag
+        
+        
+        switch section {
+        case 1:
+            APP_Delegate.currentVC = "job"
+            self.performSegue(withIdentifier: "pushJobs", sender: nil)
+            
+        case 2:
+            APP_Delegate.currentVC = "client"
+            self.performSegue(withIdentifier: "pushClient", sender: nil)
+            
+        case 3:
+            
+            //[mainTableView scrollToRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:0] atScrollPosition:UITableViewScrollPositionTop animated:NO];
+           
+            APP_Delegate.currentVC = "language"
+            var menu = menus[languageIndex]
+            if menu.isCollaps == true {
+                menu.isCollaps = false
+                menus[languageIndex] = menu
+                tableSideMenu.reloadData()
+                
+                if tableSideMenu.frame.size.height < tableSideMenu.contentSize.height {
+                    tableSideMenu.isScrollEnabled = true
+                }else{
+                    tableSideMenu.isScrollEnabled = false
+                }
+                
+               // tableSideMenu.setContentOffset(.zero, animated: true)
+            }else{
+                tableSideMenu.isScrollEnabled = true
+                menu.isCollaps = true
+                menus[languageIndex] = menu
+                tableSideMenu.reloadData()
+                tableSideMenu.scrollToRow(at: IndexPath(row: 0, section: languageIndex), at: .top, animated: true)
+            }
+            
+            
+            
+            
+        case 5 :
+           // print("touch on QUOTES")
+            
+            if !isHaveNetowork(){
+                ShowError(message: AlertMessage.networkIssue, controller: windowController)
+                return
+            }
+            APP_Delegate.currentVC = "quote"
+            self.performSegue(withIdentifier: "pushQuote", sender: nil)
+            
+        case 6:
+            if !isHaveNetowork(){
+                ShowError(message: AlertMessage.networkIssue, controller: windowController)
+                return
+            }
+            APP_Delegate.currentVC = "auditvc"
+            self.performSegue(withIdentifier: "pushAudit", sender: nil)
+            
+        case 7 :
+            if !isHaveNetowork(){
+                ShowError(message: AlertMessage.networkIssue, controller: windowController)
+                return
+            }
+            APP_Delegate.currentVC = "barcode"
+            scanBarcode()
+            
+        case 8:
+            if !isHaveNetowork(){
+                ShowError(message: AlertMessage.networkIssue, controller: windowController)
+                return
+            }
+                APP_Delegate.currentVC = "AdminChatVc"
+                self.performSegue(withIdentifier: "pushAdminChat", sender: nil)
+            
+            
+        case 9:
+            if !isHaveNetowork(){
+                ShowError(message: AlertMessage.networkIssue, controller: windowController)
+                return
+            }
+                APP_Delegate.currentVC = "ExpenceVc"
+                self.performSegue(withIdentifier: "pushExpence", sender: nil)
+            
+        default:
+            if !isHaveNetowork(){
+                ShowError(message: AlertMessage.networkIssue, controller: windowController)
+                return
+            }
+            
+            if indicator == nil{
+                startActivityIndicator(headerView: headerView!)
+                getLocationForCheckInOut()
+            }else{
+                print("indicator running")
+            }
+        }
+        
+       
+    }
+    
+    func scanBarcode() -> Void {
+        let viewController = BarcodeScannerViewController()
+        viewController.codeDelegate = self
+        viewController.errorDelegate = self
+        viewController.dismissalDelegate = self
+        viewController.modalPresentationStyle = .fullScreen
+        present(viewController, animated: true, completion: nil)
+    }
+    
+    
+    
+    func reloadTable() -> Void {
+        let result = SideMenu.getModel()
+        menus = result.0
+        languageIndex = result.1
+        
+        DispatchQueue.main.async {
+            self.lblLogout.text = LanguageKey.logout
+            self.tableSideMenu.reloadData()
+        }
+    }
+    
+    
+    func getLocationForCheckInOut() -> Void {
+        
+        //This location code will work properly only on real iOS device.
+        
+        if LocationManager.shared.isCheckLocation(){
+            LocationManager.shared.isStatus = true
+            LocationManager.shared.updateCurrentLocation { (isUpdate) in
+                if isUpdate {
+                    self.checkInCheckOutService(lat: LocationManager.shared.currentLattitude, lng: LocationManager.shared.currentLongitude)
+                }
+                
+            }
+        }else{
+             self.checkInCheckOutService(lat: "0.0", lng: "0.0")
+        }
+    }
+    
+    
+    func checkInCheckOutService(lat:String,lng:String) -> Void {
+        
+        var checkid : String?
+        if let id = getCheckInId() {
+            if id != "" {
+                 checkid = id
+            }
+        }
+        
+        
+        let param = Params()
+        param.usrId = getUserDetails()?.usrId
+        param.time = convertDateToStringForServer(date: Date(), dateFormate: DateFormate.ddMMMyyyy_hh_mm_ss_a)
+        param.checkType = (checkid != nil) ? String(CheckType.checkout.rawValue) :  String(CheckType.checkin.rawValue)
+        param.checkId = (checkid != nil) ? checkid! : ""
+        param.lat = lat
+        param.lng = lng
+        
+        
+        serverCommunicator(url: Service.addCheckInOutIime, param: param.toDictionary) { (response, success) in
+            //print(response)
+            self.StopActivityIndicator()
+           // killLoader()
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(CheckinResponse.self, from: response as! Data) {
+                    if decodedData.success == true{
+                        saveCheckInId(checkinId: (decodedData.data?.checkId)!)
+                        self.reloadTable()
+                       // ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                    }else{
+                       // ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                    }
+                }else{
+                    ShowError(message: AlertMessage.formatProblem, controller: windowController)
+                }
+            }
+        }
+    }
+    func ShowPopUp () {
+         
+           let alert = UIAlertController(title: LanguageKey.detail_scan_barcode, message: nil , preferredStyle: .alert)
+
+            //2. Add the text field. You can configure it however you need.
+            alert.addTextField { (textField) in
+                textField.text = "8-767289-200"
+            }
+
+            // 3. Grab the value from the text field, and print it when the user clicks OK.
+            alert.addAction(UIAlertAction(title: LanguageKey.done, style: .default, handler: { [weak alert] (_) in
+                let textField = alert?.textFields![0] // Force unwrapping because we know it exists.
+                if textField!.text!.count > 0 {
+                    self.getEquipmentListFromBarcodeScanner(barcodeString: textField!.text!)
+                }else{
+                    self.showToast(message: "Please enter valid barcode")
+                }
+                
+            }))
+        
+            alert.addAction(UIAlertAction(title: LanguageKey.cancel, style: .default, handler: nil ))
+
+            // 4. Present the alert.
+            self.present(alert, animated: true, completion: nil)
+        }
+    
+    
+    
+    func getEquipmentListFromBarcodeScanner(barcodeString : String) -> Void {
+        
+        if !isHaveNetowork() {
+            killLoader()
+            ShowError(message: AlertMessage.networkIssue, controller: windowController)
+            return
+        }
+        
+        
+            showLoader()
+            let param = Params()
+            param.audId = ""
+            param.barCode = barcodeString
+            
+            serverCommunicator(url: Service.getEquipmentInfoByBarcode, param: param.toDictionary) { (response, success) in
+                 killLoader()
+                if(success){
+                    let decoder = JSONDecoder()
+                   
+                    // will receive Equipement data =======
+                    if let decodedData = try? decoder.decode(barcodeAuditResponse.self, from: response as! Data) {
+                        if decodedData.success == true{
+                            
+                          DispatchQueue.main.async {
+                            let vc = UIStoryboard(name: "MainAudit", bundle: nil).instantiateViewController(withIdentifier: "remarkTab") as! RemarkVC;
+                            let navCon = NavClientController(rootViewController: vc)
+                            vc.isPresented = true
+                            vc.equipment = decodedData.data
+                            navCon.modalPresentationStyle = .fullScreen
+                            self.present(navCon, animated: true, completion: nil)
+                            }
+                        }else{
+                            self.showToast(message: getServerMsgFromLanguageJson(key: decodedData.message!)!)
+                        }
+                    }else{
+                         // will receive Audit data ======
+                        if let decodedData = try? decoder.decode(AuditListResponse.self, from: response as! Data) {
+                            if decodedData.success == true{
+                                DispatchQueue.main.async {
+                                    let vc = UIStoryboard(name: "MainAudit", bundle: nil).instantiateViewController(withIdentifier: "audit") as! AuditVC;
+                                    
+                                    if let audits = decodedData.data{
+                                        vc.arrOFUserData = audits
+                                        vc.barcode = barcodeString
+                                        let navCon = NavClientController(rootViewController: vc)
+                                        navCon.modalPresentationStyle = .fullScreen
+                                        vc.isBarcodeScanner = true
+                                        self.present(navCon, animated: true, completion: nil)
+                                    }
+                                    
+                                }
+                            }else{
+                                self.showToast(message: getServerMsgFromLanguageJson(key: decodedData.message!)!)
+                            }
+                      }
+                  }
+              }
+            }
+        }
+}
+
+
+extension SideMenuVC : UITableViewDelegate, UITableViewDataSource {
+    
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return menus.count
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        let menu = menus[section]
+        if menu.id == 3 && menu.isCollaps == true {
+            return menu.subMenu.count
+        }
+        return 0
+    }
+
+    
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        return 50.0
+    }
+    
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+
+       let headerView = UIView(frame: CGRect(x: 0, y: 0, width: tableView.frame.width, height: 50));
+        
+        let menu = menus[section]
+        
+        let theImageView = UIImageView(frame: CGRect(x: 10, y: 12, width: 25, height: 25));
+        theImageView.image = UIImage(named: menu.image)
+        headerView.addSubview(theImageView)
+        
+        let lblName = UILabel(frame: CGRect(x: 50, y: 12, width: 183, height: 25))
+        lblName.text = menu.name
+        lblName.font = UIFont.systemFont(ofSize: 15.0)
+        lblName.textColor = UIColor(red: 115.0/225.0, green: 125.0/255, blue: 126.0/255.0, alpha: 0.8)
+        headerView.addSubview(lblName)
+        
+        let saprator = UILabel(frame: CGRect(x: 43, y: 49, width: 197, height: 1))
+        saprator.backgroundColor = UIColor(red: 170.0/255.0, green: 170.0/255.0, blue: 170.0/255.0, alpha: 0.6)
+        headerView.addSubview(saprator)
+        
+        let headerTapGesture = UITapGestureRecognizer()
+        headerView.tag = menu.id
+        headerTapGesture.addTarget(self, action: #selector(sectionHeaderWasTouched(_:)))
+        headerView.addGestureRecognizer(headerTapGesture)
+        
+        
+        if (indicator != nil) && (menu.id == 4) {
+            if indicator!.isAnimating{
+                self.startActivityIndicator(headerView: headerView)
+            }
+        }
+        
+        
+        if menu.id == 8 {
+           
+           let count = ChatManager.shared.userModels.reduce(0) {$0 + Int($1.unreadCount ?? "0")!}
+           // print("current count = \(count)")
+            //print("side menu user model === \(ChatManager.shared.userModels.count)")
+           if count > 0 {
+            let countlabel = UILabel(frame: CGRect(x: 210, y: 15, width: 15 + (5*count.description.count), height: 20))
+               countlabel.backgroundColor = .red
+               countlabel.text = "\(count)"
+               countlabel.textColor = .white
+               countlabel.layer.cornerRadius = 10.0
+               countlabel.layer.masksToBounds = true
+               countlabel.textAlignment = .center
+               countlabel.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
+               headerView.addSubview(countlabel)
+           }
+        }
+        
+        
+        headerView.backgroundColor = .white
+        
+        return headerView
+        
+    }
+    
+  
+  
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "sideMenu") as! SideMenuCell
+        let menu = menus[languageIndex].subMenu as! [languageDetails]
+        let language = menu[indexPath.row]
+        cell.lblJob.text = language.nativeName
+        
+        if let currentLang = getCurrentSelectedLanguage(){
+            if currentLang == language.nativeName {
+               // cell.accessoryType = UITableViewCell.AccessoryType.checkmark
+                cell.imgCheck.isHidden = false
+            }else{
+               // cell.accessoryType = UITableViewCell.AccessoryType.none
+                cell.imgCheck.isHidden = true
+            }
+        }else{
+            // cell.accessoryType = UITableViewCell.AccessoryType.none
+            cell.imgCheck.isHidden = true
+        }
+        
+        
+        
+        return cell
+    }
+    
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        if !isHaveNetowork() {
+            ShowError(message: AlertMessage.networkIssue, controller: windowController)
+            return
+        }
+        
+        showLoader()
+        
+        ShowAlert(title: LanguageKey.confirmation, message: LanguageKey.changeLanguage, controller: windowController, cancelButton: LanguageKey.cancel as NSString, okButton: LanguageKey.done as NSString, style: .alert) { (cancel, ok) in
+            if ok {
+                
+                let languageModel : languageDetails = (getDefaultSettings()?.languageList![indexPath.row])!
+                
+                LanguageManager.shared.setLanguage(filename: languageModel.fileName!, filePath: languageModel.filePath!, languageName: languageModel.nativeName!, version: languageModel.version!, alert: true, callBack: { (success) in
+                    if success {
+                     self.reloadTable()
+                     self.setVersion()
+                     killLoader()
+                        self.revealViewController()?.revealToggle(animated: true)
+                    }
+                })
+            }
+            
+            if cancel {
+                killLoader()
+            }
+            
+        }
+    }
+    
+    func startActivityIndicator(headerView : UIView) -> Void {
+            indicator = UIActivityIndicatorView()
+            indicator = UIActivityIndicatorView(frame: CGRect(x: 210, y: 20, width: 10, height: 10))
+            indicator!.style = UIActivityIndicatorView.Style.gray
+            indicator!.backgroundColor = UIColor.white
+            indicator!.hidesWhenStopped = true
+    
+            DispatchQueue.main.async {
+                self.indicator!.startAnimating()
+                headerView.addSubview(self.indicator!)
+            }
+     }
+    
+    func StopActivityIndicator() -> Void {
+        if indicator != nil{
+            DispatchQueue.main.async {
+                self.indicator!.stopAnimating()
+                self.indicator = nil
+            }
+        }
+    }
+    
+    
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 50.0
+    }
+    
+}
+
+
+
+extension SideMenuVC : BarcodeScannerErrorDelegate, BarcodeScannerCodeDelegate, BarcodeScannerDismissalDelegate {
+    func scanner(_ controller: BarcodeScannerViewController, didCaptureCode code: String, type: String) {
+        print(code)
+        getEquipmentListFromBarcodeScanner(barcodeString: code)
+        controller.dismiss(animated: true, completion: {
+            controller.reset()
+        })
+    }
+    
+    
+    func scanner(_ controller: BarcodeScannerViewController, didReceiveError error: Error) {
+        print(error)
+    }
+    
+    func scannerDidDismiss(_ controller: BarcodeScannerViewController) {
+        controller.dismiss(animated: true, completion: nil)
+    }
+}

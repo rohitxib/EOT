@@ -1,0 +1,218 @@
+//
+//  EquipmentVC.swift
+//  EyeOnTask
+//
+//  Created by Mojave on 12/11/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+import UIKit
+class EquipmentVC: UIViewController, UITableViewDataSource, UITableViewDelegate{
+    
+    @IBOutlet weak var lblEqListNo: UILabel!
+    @IBOutlet weak var tableView: UITableView!
+    
+    var  auditDetail : AuditListData?
+    var equipments = [EquipementListData]()
+    var count : Int = 0
+    var refreshControl = UIRefreshControl()
+    
+    //=========================
+    // MARK:- Initial methods
+    //=========================
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        self.navigationItem.title = LanguageKey.detail_equipment
+
+        NotiyCenterClass.registerRefreshEquipmentListNotifier(vc: self, selector: #selector(equipmentHandler(_:)))
+        showLoader()
+        getEquipementListService()
+       
+        setLocalization()
+        refreshControl.attributedTitle = NSAttributedString(string: " ")
+        refreshControl.addTarget(self, action: #selector(refreshControllerMethod), for: UIControl.Event.valueChanged)
+        tableView.addSubview(refreshControl) // not required when using UITableViewController
+        ActivityLog(module:Modules.equipment.rawValue , message: ActivityMessages.auditEquipment)
+    }
+    
+    
+    @objc func equipmentHandler(_ notification: NSNotification){
+        let userinfo = notification.userInfo
+        
+        if let info = userinfo {
+            let equipment = equipments.filter({$0.equId == info["equId"] as? String})
+            if equipment.count == 1 {
+                let equp = equipment[0]
+                equp.status = info["status"] as? String
+                equp.remark = info["remark"] as? String
+            }
+            
+            DispatchQueue.main.async {
+                self.tableView.reloadData()
+            }
+        }
+    }
+    
+    func setLocalization() -> Void {
+        self.lblEqListNo.text! = "\(LanguageKey.list_item) 0"
+    }
+    
+    
+    @objc func refreshControllerMethod(_ notification: NSNotification){
+        count = 0
+        equipments.removeAll()
+        self.getEquipementListService()
+    }
+    
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        self.tabBarController?.navigationItem.title = LanguageKey.detail_equipment//LanguageKey.title_documents
+       
+        tableView.estimatedRowHeight = 200
+        tableView.estimatedRowHeight = UITableView.automaticDimension
+        tableView.rowHeight = UITableView.automaticDimension
+        
+      //  tableView.reloadData()
+    }
+    
+    
+    
+    
+    //==========================
+    // MARK:- Tableview methods
+    //==========================
+    
+    
+    
+    //    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+    //        return 103.0
+    //    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) ->Int{
+        return equipments.count
+    }
+    
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        
+        let cell = tableView.dequeueReusableCell(withIdentifier: "quipmentCell",for: indexPath) as! EquipmentCell
+        let equipment = equipments[indexPath.row]
+        
+        
+        if equipment.status == "0" || equipment.status == "" {
+            cell.lblName.text = equipment.equnm
+        }else{
+            cell.lblName.text = " ✔︎ \(equipment.equnm ?? "")"
+        }
+        
+        
+        
+        cell.lblAddress.text = equipments[indexPath.row].location
+        return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+    }
+    
+    //===============================
+    // MARK:- Data - Passing method
+    //===============================
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
+        if segue.identifier == "Remark" {
+            if let indexPath = tableView.indexPathForSelectedRow {
+                let getDetail = segue.destination as! RemarkVC
+                getDetail.equipment = equipments[indexPath.row]
+            }
+        }
+        
+    }
+    
+    
+    
+    //==================================
+    // MARK:- Equipement LIST Service methods
+    //==================================
+    func getEquipementListService(){
+        
+        if !isHaveNetowork() {
+            if self.refreshControl.isRefreshing {
+                self.refreshControl.endRefreshing()
+            }
+            killLoader()
+            return
+        }
+        
+        
+        let param = Params()
+        param.compId = getUserDetails()?.compId
+        param.usrId = getUserDetails()?.usrId
+        param.audId = auditDetail?.audId
+        param.limit = ContentLimit
+        param.index = "0"
+        param.isMobile = 1
+        
+        
+        serverCommunicator(url: Service.getAuditEquipmentList, param: param.toDictionary) { (response, success) in
+            
+                if !isHaveNetowork() {
+                    if self.refreshControl.isRefreshing {
+                        self.refreshControl.endRefreshing()
+                    }
+                    killLoader()
+                    ShowError(message: AlertMessage.networkIssue, controller: windowController)
+                    
+                    return
+                }
+            
+            if(success){
+                let decoder = JSONDecoder()
+                
+                if let decodedData = try? decoder.decode(EqListResponse.self, from: response as! Data) {
+                    if decodedData.success == true{
+                        
+                        if decodedData.data!.count > 0 {
+                            self.equipments = decodedData.data!
+                            
+                            DispatchQueue.main.async {
+                             self.lblEqListNo.text! = "\(LanguageKey.list_item) \(String(self.equipments.count))"
+                             self.tableView.reloadData()
+                                killLoader()
+                            }
+                        }else{
+                            self.equipments.removeAll()
+                            DispatchQueue.main.async {
+                                self.lblEqListNo.text! = "\(LanguageKey.list_item) \(String(self.equipments.count))"
+                                self.tableView.reloadData()
+                            }
+                            
+                            killLoader()
+                        }
+                    }else{
+                        killLoader()
+                    }
+                }else{
+                    killLoader()
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {(cancel,done) in
+                        
+                        if cancel {
+                            showLoader()
+                            self.getEquipementListService()
+                        }
+                    })
+                }
+            }else{
+                killLoader()
+                ShowAlert(title: errorString, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: { (cancelButton, okButton) in
+                    if cancelButton {
+                        showLoader()
+                        self.getEquipementListService()
+                    }
+                })
+            }
+        }
+    }
+}

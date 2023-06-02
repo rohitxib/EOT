@@ -1,0 +1,280 @@
+//
+//  RemarkVC.swift
+//  EyeOnTask
+//
+//  Created by Mojave on 12/11/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+import UIKit
+
+class RemarkVC: UIViewController , OptionViewDelegate {
+    var isPresented = false
+    @IBOutlet weak var statusVw: UIView!
+    @IBOutlet weak var lblEqName: UILabel!
+    
+    @IBOutlet weak var txtRemark: UITextView!
+    @IBOutlet weak var btnLblCondition: UIButton!
+    
+    @IBOutlet weak var lblAddress: UILabel!
+    @IBOutlet weak var btnMap: UIButton!
+    @IBOutlet weak var btnCondition: UIButton!
+    @IBOutlet weak var lblRemarkName: UILabel!
+    @IBOutlet weak var lblCondition: UILabel!
+    @IBOutlet weak var btnUpdate: UIButton!
+    var equipementStatus : [ConditionType]  = [.Good, .Poor]
+    var selectedCondition = ConditionType.Good
+    var locationlat:String?
+    var locationlng:String?
+    var equipment : EquipementListData?
+    var updateEquipement = [String:Any]()
+    var optionalVw : OptionalView?
+    var currentStatusID : String? = nil
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        setLocalization()
+        SetBackBarButtonCustom()
+        self.navigationController?.navigationBar.backItem?.title = ""
+        LocationManager.shared.startStatusLocTracking()
+        lblEqName.text = (equipment?.equnm != nil) ?  equipment!.equnm! : ""
+        lblAddress.text = (equipment?.location != nil) ?  equipment!.location! : ""
+        txtRemark.text = equipment?.remark
+        currentStatusID = equipment?.status
+        
+        
+        
+        
+        
+        if let statusId = equipment?.status {
+            
+            if statusId != "" && statusId != "0" {
+                let status = Int(statusId)! - 1
+                if status > 0 {
+                    selectedCondition = equipementStatus[status]
+                    btnLblCondition.setTitle("\(equipementStatus[status])", for: .normal)
+                }else{
+                    selectedCondition = equipementStatus[0]
+                    btnLblCondition.setTitle("\(equipementStatus[0])", for: .normal)
+                }
+            }else{
+                selectedCondition = equipementStatus[0]
+                btnLblCondition.setTitle("\(equipementStatus[0])", for: .normal)
+            }
+        }
+        
+        ActivityLog(module:Modules.equipment.rawValue , message: ActivityMessages.auditEquipmentRemark)
+
+    }
+    
+    func SetBackBarButtonCustom()
+    {
+        //Back buttion
+        let button = UIBarButtonItem(image: UIImage(named: "back-arrow"), style: .plain, target: self, action: #selector(AuditVC.onClcikBack))
+               self.navigationItem.leftBarButtonItem  = button
+    }
+
+    @objc func onClcikBack()
+    {
+        _ = self.navigationController?.popViewController(animated: true)
+        self.dismiss(animated: true, completion: nil)
+    }
+    func setLocalization() -> Void {
+        self.navigationItem.title = LanguageKey.remark //LanguageKey.job_details
+        btnMap.setTitle(LanguageKey.map , for: .normal)
+        lblCondition.text = LanguageKey.condition
+        lblRemarkName.text = LanguageKey.remark
+    
+        
+        if equipment?.status == "0" || equipment?.status == ""{
+            btnUpdate.setTitle(LanguageKey.submit_btn , for: .normal)
+        }else{
+            btnUpdate.setTitle(LanguageKey.update_btn , for: .normal)
+        }
+
+    }
+    
+    
+    @IBAction func btnSubmit(_ sender: Any) {
+         getLocationAndUpdateRemarkOnServer()
+    }
+    
+    @IBAction func pressedMapButton(_ sender: Any) {
+        
+    }
+    
+    @IBAction func pressedConditionButton(_ sender: Any) {
+        self.openDwopDown()
+    }
+    
+    
+    override func shouldPerformSegue(withIdentifier identifier: String, sender: Any?) -> Bool {
+           if identifier == "remarkMap" {
+               if equipment?.lat == nil || equipment?.lng == nil || equipment?.lat == "" || equipment?.lng == "" || equipment?.lat == "0" || equipment?.lng == "0" {
+                  self.showToast(message: AlertMessage.locationNotAvailable)
+                   return false
+               }
+           }
+           return true
+       }
+       
+       override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+           if segue.identifier == "remarkMap"{
+               let mapVw = segue.destination as! MapVC
+               mapVw.lattitude = equipment?.lat
+               mapVw.longitude = equipment?.lng
+               mapVw.address = lblAddress.text
+           }
+       }
+    
+    
+    
+    //==================================
+    // MARK:- Remark  Service methods
+    //==================================
+    func  updateStatusOnServer(lat:String,lon:String){
+        
+        if !isHaveNetowork() {
+            killLoader()
+            ShowError(message: AlertMessage.networkIssue, controller: windowController)
+            return
+        }
+        
+        showLoader()
+        let param = Params()
+        param.audId = equipment?.audId
+        param.equId = equipment?.equId
+        param.status = "\(selectedCondition.rawValue)"
+        param.remark = trimString(string: txtRemark.text!)
+        param.lat = lat
+        param.lng = lon
+        
+        serverCommunicator(url: Service.getupdateAuditEquipment, param: param.toDictionary) { (response, success) in
+            killLoader()
+            if(success){
+                let decoder = JSONDecoder()
+                
+                if let decodedData = try? decoder.decode(CommonResponse.self, from: response as! Data) {
+                    if decodedData.success == true{
+                        windowController.showToast(message: getServerMsgFromLanguageJson(key: decodedData.message!)!)
+                        self.equipment?.status = "\(self.selectedCondition.rawValue)"
+                        self.equipment?.remark = param.remark
+                        
+                        
+                        NotiyCenterClass.fireRefreshEquipmentListNotifier(dict: (self.equipment?.toDictionary)!)
+                        
+                        DispatchQueue.main.async {
+                            if self.isPresented {
+                                self.dismiss(animated: true, completion: nil)
+                            }else{
+                                 self.navigationController?.popViewController(animated: true)
+                            }
+                        }
+                    }else{
+                        windowController.showToast(message: getServerMsgFromLanguageJson(key: decodedData.message!)!)
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {(cancel,done) in
+                        
+                        if cancel {
+                            showLoader()
+                            self.updateStatusOnServer(lat: lat, lon: lon)
+                        }
+                    })
+                }
+            }else{
+                ShowAlert(title: errorString, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: { (cancelButton, okButton) in
+                    if cancelButton {
+                        showLoader()
+                        self.updateStatusOnServer(lat: lat, lon: lon)
+                    }
+                })
+            }
+        }
+    }
+    
+    func getLocationAndUpdateRemarkOnServer(){
+        
+        if LocationManager.shared.isCheckLocation() {
+            self.updateStatusOnServer(lat: "\(LocationManager.shared.currentLattitude)", lon: "\(LocationManager.shared.currentLongitude)")
+        }else{
+            updateStatusOnServer(lat: "0.0", lon: "0.0")
+        }
+    }
+    
+    
+    // ================================
+    //  MARK: Open Drop Down
+    // ================================
+    func openDwopDown() {
+        
+        if (optionalVw == nil){
+            self.optionalVw = OptionalView.instanceFromNib() as? OptionalView;
+            let sltTxtfldFrm = btnLblCondition.convert(btnLblCondition.bounds, from: self.view)
+            self.optionalVw?.setUpMethod(frame: CGRect(x: 20, y: ((-sltTxtfldFrm.origin.y) + sltTxtfldFrm.size.height-5), width: self.view.frame.size.width - 40, height: 80))
+            self.optionalVw?.delegate = self
+            self.view.addSubview( self.optionalVw!)
+            self.optionalVw?.removeOptionVwCallback = {(isRemove : Bool) -> Void in
+                self.removeOptionalView()
+            }
+        }else{
+            DispatchQueue.main.async {
+                self.removeOptionalView()
+            }
+        }
+    }
+    
+    func removeOptionalView(){
+        if optionalVw != nil {
+            //self.backgroundView.isHidden = true
+            self.optionalVw?.removeFromSuperview()
+            self.optionalVw = nil
+        }
+    }
+    
+    func hideBackgroundView() {
+        if ((optionalVw) != nil){
+            removeOptionalView()
+        }
+        
+    }
+    //====================================================
+    //MARK:- OptionView Delegate Methods
+    //====================================================
+    func optionView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return equipementStatus.count
+    }
+    
+    func optionView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        var cell = tableView.dequeueReusableCell(withIdentifier:"cell")
+        if(cell == nil){
+            cell = UITableViewCell.init(style: .default, reuseIdentifier:"cell")
+        }
+        
+        let status : String = String(describing: equipementStatus[indexPath.row])
+        cell?.textLabel?.text = status.capitalizingFirstLetter()
+        cell!.textLabel!.font = UIFont.systemFont(ofSize: 13.0)
+        cell?.backgroundColor = .clear
+        cell?.textLabel?.textColor = UIColor.darkGray
+        cell?.isUserInteractionEnabled = true
+        return cell!
+    }
+    
+    
+    func optionView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+       //self.removeOptionalView()
+        selectedCondition =  equipementStatus[indexPath.row]
+        btnLblCondition.setTitle("\(selectedCondition)", for: .normal)
+        self.removeOptionalView()
+    }
+    
+    
+    func optionView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 40.0
+    }
+    
+    
+}
+
+
+

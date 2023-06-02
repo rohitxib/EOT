@@ -1,0 +1,46 @@
+//
+//  AuditDocumentRes.swift
+//  EyeOnTask
+//
+//  Created by Mojave on 15/11/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+import Foundation
+
+class AuditDocRes: Codable {
+    var success: Bool?
+    var message: String?
+    var data: [AuditDocResDataDetails]?
+    var count : String?
+    var statusCode  :String?
+}
+
+class AuditDocResDataDetails: Codable {
+    var attachmentId: String?
+    var deleteTable: String?
+    var image_name: String?
+    var audImg_name: String?
+    var userId: String?
+    var attachFileName: String?
+    var attachThumnailFileName: String?
+    var attachFileActualName: String?
+    var attachAuditSign: String?
+    var attachThumnailAuditSign: String?
+    var attachAuditActualSign: String?
+    var type: String?
+    var createdate: String?
+    var name: String?
+    var jobid: String?
+}
+
+class AuditAddDocumentRes: Codable {
+    var success: Bool?
+    var message: String?
+    var data: [AuditDocResDataDetails]
+    var statusCode : String?
+}
+
+
+
+

@@ -1,0 +1,698 @@
+//
+//  ClientVC.swift
+//  EyeOnTask
+//
+//  Created by Hemant Pandagre on 08/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+import CoreData
+class ClientVC: UIViewController, UITableViewDelegate, UITableViewDataSource, UISearchBarDelegate ,SWRevealViewControllerDelegate, UITextFieldDelegate {
+    
+
+    @IBOutlet weak var lblClient: UILabel!
+    @IBOutlet weak var txtSearchField: UITextField!
+    @IBOutlet var extraButton: UIBarButtonItem!
+    @IBOutlet var menuButton:UIBarButtonItem!
+    @IBOutlet var tableView: UITableView!
+    var isFilter = Bool()
+    var filterArry = [ClientList]()
+    var arrOfShowData = [ClientList]()
+    var arrOFUserData = [UserJobList]()
+    var isAdded = Bool()
+    var isChanged = Bool()
+    var selectedCell : IndexPath? = nil
+    var refreshControl = UIRefreshControl()
+    var jobTabVC : JobTabController?
+    
+  
+    
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+       // APP_Delegate.currentVC = "client"
+        lblClient.text = LanguageKey.empty_client_list
+       // NotiyCenterClass.registerNotiHandlerNotifier(vc: self, selector: #selector(self.chatfNotiHandle(_:)))
+       // NotiyCenterClass.registerCltNotiHandlerNotifier(vc: self, selector: #selector(self.clientChatNotiHandle(_:)))
+
+        
+        isAdded = true
+        isChanged = true
+        self.getAccounttype()
+        
+        DatabaseClass.shared.callbackForClientVC = {( isReload : Bool?) -> Void in
+            if(isReload)!{
+                DispatchQueue.main.async {
+                    self.tableView.reloadData()
+                    self.getClientSink()
+                }
+            }
+        }
+
+
+         let paddingView = UIView(frame: CGRect(x: 0, y: 0, width: 15, height: self.txtSearchField.frame.height))
+        txtSearchField.leftView = paddingView
+        txtSearchField.leftViewMode = UITextField.ViewMode.always
+        
+        
+        let paddingView1 = UIView(frame: CGRect(x: 0, y: 0, width: 20, height: self.txtSearchField.frame.height))
+        txtSearchField.rightView = paddingView1
+        txtSearchField.rightViewMode = UITextField.ViewMode.always
+        
+      
+        
+        if let revealController = self.revealViewController(){
+            revealViewController().delegate = self
+            extraButton.target = revealViewController()
+            extraButton.action = #selector(SWRevealViewController.revealToggle(_:))
+            revealController.tapGestureRecognizer()
+        }
+        
+        refreshControl.attributedTitle = NSAttributedString(string: " ")
+        refreshControl.addTarget(self, action: #selector(refreshControllerMethod), for: UIControl.Event.valueChanged)
+        tableView.addSubview(refreshControl) // not required when using UITableViewController
+        
+         arrOFUserData = DatabaseClass.shared.fetchDataFromDatabse(entityName: "UserJobList", query: nil) as! [UserJobList]
+         setLocalization()
+        
+        
+        ActivityLog(module:Modules.client.rawValue , message: ActivityMessages.clientList)
+    }
+    
+    func setLocalization() -> Void {
+        self.navigationItem.title = LanguageKey.clients
+        txtSearchField.placeholder = LanguageKey.search
+               
+    }
+    
+    @objc func refreshControllerMethod() {
+       getClientSink()
+    }
+  
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+         tableView.reloadData()
+         self.getClientListFromDB()
+    }
+    
+    
+    //=======================
+    // Disable Pan gesture
+    //========================
+    func revealControllerPanGestureShouldBegin(_ revealController: SWRevealViewController!) -> Bool {
+        return false
+    }
+    
+    func revealController(_ revealController: SWRevealViewController!, didMoveTo position: FrontViewPosition) {
+          if position == .left {
+              setLocalization()
+              getClientSink()
+          }
+      }
+    
+    
+    //=======================
+    // TableView methods
+    //========================
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+       return arrOfShowData.count;
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+          let cell = tableView.dequeueReusableCell(withIdentifier: "cell") as! ClientCell
+        
+        let clientDetails = self.arrOfShowData[indexPath.row]
+        cell.nameLbl?.text = clientDetails.nm?.capitalizingFirstLetter()
+       
+        let query = "cltId = '\(clientDetails.cltId!)' && def = 1"
+      
+         let isExist = DatabaseClass.shared.fetchDataFromDatabse(entityName: "ClientSitList", query: query) as? [ClientSitList]
+        if isExist != nil && isExist!.count > 0  {
+            let cltSiteDetails = isExist![0]
+                let address = cltSiteDetails.adr?.capitalizingFirstLetter()
+                    cell.addressLbl?.attributedText =  lineSpacing(string: address!, lineSpacing: 7.0)
+        }else{
+             cell.addressLbl?.text = ""
+        }
+        
+        
+        let ladksj  = clientDetails.cltId!.components(separatedBy: "-")
+        
+        if ladksj.count > 0 {
+            let tempId = ladksj[0]
+            if tempId == "Client" {
+                 cell.addressLbl?.textColor = UIColor.red
+                 cell.addressLbl.text = LanguageKey.client_syn
+                 cell.nameLbl?.textColor = UIColor.lightGray
+                 cell.isUserInteractionEnabled = false
+                 cell.arrowImage.isHidden = true
+            }else{
+                cell.arrowImage.isHidden = false
+                cell.isUserInteractionEnabled = true
+                
+                cell.nameLbl?.textColor = UIColor.init(red: 115.0/255.0, green: 125.0/255.0, blue: 126.0/255.0, alpha: 1.0)
+                cell.addressLbl.textColor = UIColor.init(red: 115.0/255.0, green: 125.0/255.0, blue: 126.0/255.0, alpha: 1.0)
+            }
+        }else{
+            cell.arrowImage.isHidden = false
+            cell.isUserInteractionEnabled = true
+            
+            cell.nameLbl?.textColor = UIColor.init(red: 115.0/255.0, green: 125.0/255.0, blue: 126.0/255.0, alpha: 1.0)
+            cell.addressLbl.textColor = UIColor.init(red: 115.0/255.0, green: 125.0/255.0, blue: 126.0/255.0, alpha: 1.0)
+            
+            
+        }
+        
+        if selectedCell == indexPath {
+            cell.viw.backgroundColor = UIColor.init(red: 236.0/255.0, green: 244.0/255.0, blue: 245.0/255.0, alpha: 1.0)
+        }else{
+            cell.viw.backgroundColor = UIColor.white
+        }
+        
+       return cell
+    }
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        if (selectedCell != nil) {
+            //If selected cell exist on visible indexpaths
+            let isExist = tableView.indexPathsForVisibleRows?.contains(selectedCell!)
+            if isExist!{
+                let cellPrevious = tableView.cellForRow(at: selectedCell!) as! ClientCell
+                    cellPrevious.viw.backgroundColor = .white
+            }
+        }
+
+        let cell = tableView.cellForRow(at: indexPath) as! ClientCell
+        cell.viw.backgroundColor = UIColor.init(red: 236.0/255.0, green: 244.0/255.0, blue: 245.0/255.0, alpha: 1.0)
+        self.selectedCell = indexPath
+        
+        performSegue(withIdentifier: "clientTabs", sender: indexPath)
+    }
+    
+ 
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        
+        if segue.identifier == "clientTabs"{
+            if let indexPath = tableView.indexPathForSelectedRow {
+                let clinttabbarVC = segue.destination as! ClientTabController
+                clinttabbarVC.objOFClintTabBar = self.arrOfShowData[indexPath.row]
+            }
+        }else if segue.identifier == "AddClient"{
+            let addContact = segue.destination as! AddClientVC
+            addContact.callbackForClientVC = {(isBack : Bool) -> Void in
+                self.isAdded = true
+                self.isChanged =  false
+            }
+         }
+    }
+    
+    
+    //==========================
+    // MARK:- Textfield methods
+    //==========================
+    
+     func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        let result = (textField.text as NSString?)?.replacingCharacters(in: range, with: string) ?? string
+        
+        if result.count > 2 || result.count == 0 {
+            var query = ""
+            if result != "" {
+                query = "nm CONTAINS[c] '\(result)'"
+            }
+            
+            showDataOnTableView(query: query == "" ? nil : query)
+        }
+        
+        return true
+    }
+
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {   //delegate method
+        textField.resignFirstResponder()
+        return true
+    }
+    
+    //=====================================
+    // MARK:- Get Account Type Service
+    //=====================================
+    
+    func getAccounttype(){
+        
+        
+        if !isHaveNetowork() {
+            return
+        }
+        
+        let lastRequestTime : String? = UserDefaults.standard.value(forKey: Service.getAccType) as? String
+        
+        let param = Params()
+        param.compId = getUserDetails()?.compId
+        param.limit = "10"
+        param.index = "0"
+        param.search = ""
+        param.dateTime = lastRequestTime ?? ""
+        
+        serverCommunicator(url: Service.getAccType, param: param.toDictionary) { (response, success) in
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(AccountTypeName.self, from: response as! Data) {
+                    
+                    if decodedData.success == true{
+                        if decodedData.data.count > 0 {
+                            //Request time will be update when data comes otherwise time won't be update
+                            UserDefaults.standard.set(CurrentDateTime(), forKey: Service.getAccType)
+                                self.saveAccTypeInDB(data: decodedData.data )
+                        }
+                    }else{
+                        if let code =  decodedData.statusCode{
+                            if(code == "401"){
+                                ShowAlert(title: getServerMsgFromLanguageJson(key: decodedData.message!), message:"" , controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                    if (Ok){
+                                        DispatchQueue.main.async {
+                                            (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                        }
+                                    }
+                                })
+                            }
+                        }else{
+                            ShowError(message:  getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                }
+            }else{
+                //ShowError(message: "Please try again!", controller: windowController)
+            }
+        }
+    }
+    
+    
+    //==============================
+    // MARK:- Save data in DataBase
+    //==============================
+    func saveAccTypeInDB( data : [accountTypeDetails]) -> Void {
+        for jobs in data{
+            let query = "accId = '\(jobs.accId!)'"
+            let isExist = DatabaseClass.shared.fetchDataFromDatabse(entityName: "UserAccType", query: query) as! [UserAccType]
+            if isExist.count > 0 {
+                let existingJob = isExist[0]
+                existingJob.setValuesForKeys(jobs.toDictionary!)
+               // DatabaseClass.shared.saveEntity()
+            }else{
+                let userJobs = DatabaseClass.shared.createEntity(entityName: "UserAccType")
+                userJobs?.setValuesForKeys(jobs.toDictionary!)
+               // DatabaseClass.shared.saveEntity()
+            }
+        }
+        
+         DatabaseClass.shared.saveEntity(callback: {_ in})
+    }
+    
+
+//=====================================
+// MARK:- Get Clint List Service
+//=====================================
+    
+    func getClientSink(){
+        
+        if !isHaveNetowork() {
+            if self.refreshControl.isRefreshing {
+                self.refreshControl.endRefreshing()
+            }
+            return
+        }
+        
+        let lastRequestTime : String? = UserDefaults.standard.value(forKey: Service.getClientSink) as? String
+
+        let param = Params()
+        param.compId = getUserDetails()?.compId
+        param.limit = "10"
+        param.index = "0"
+        param.search = ""
+        param.isactive = ""
+        param.dateTime = lastRequestTime ?? ""
+
+
+        serverCommunicator(url: Service.getClientSink, param: param.toDictionary) { (response, success) in
+            if(success){
+                let decoder = JSONDecoder()
+                
+                DispatchQueue.main.async {
+                    if self.refreshControl.isRefreshing {
+                        self.refreshControl.endRefreshing()
+                    }
+                }
+                
+                if let decodedData = try? decoder.decode(ClientResponse.self, from: response as! Data) {
+                    if decodedData.success == true{
+                        
+                        
+                        if decodedData.data.count > 0 {
+                            //Request time will be update when data comes otherwise time won't be update
+                            UserDefaults.standard.set(CurrentDateTime(), forKey: Service.getClientSink)
+                            self.saveClintInDataBase(data: decodedData.data)
+                            self.getClientSiteSink()
+                        }else{
+                            if self.arrOfShowData.count == 0{
+                                DispatchQueue.main.async {
+                                    self.tableView.isHidden = true
+                                }
+                            }
+                        }
+                    }else{
+                        if let code =  decodedData.statusCode{
+                            if(code == "401"){
+                                ShowAlert(title: getServerMsgFromLanguageJson(key: decodedData.message!), message:"" , controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                    if (Ok){
+                                        DispatchQueue.main.async {
+                                            (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                        }
+                                    }
+                                })
+                            }
+                        }else{
+                            ShowError(message:  getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                }
+            }else{
+               //ShowError(message: "Please try again!", controller: windowController)
+            }
+        }
+    }
+        
+        //==============================
+        // MARK:- Save data in DataBase
+        //==============================
+     func saveClintInDataBase( data : [ClientListData]) -> Void {
+        
+        for jobs in data{
+            let query = "cltId = '\(jobs.cltId!)'"
+            let isExist = DatabaseClass.shared.fetchDataFromDatabse(entityName: "ClientList", query: query) as! [ClientList]
+            if isExist.count > 0 {
+                    if(jobs.isdelete == "0"){
+                        let existingJob = isExist[0]
+                        DatabaseClass.shared.deleteEntity(object: existingJob, callback: { (_) in})
+                    }else{
+                        let existingJob = isExist[0]
+                        existingJob.setValuesForKeys(jobs.toDictionary!)
+                        //DatabaseClass.shared.saveEntity()
+                      }
+            }else{
+                if(jobs.isdelete != "0"){
+                    let userJobs = DatabaseClass.shared.createEntity(entityName: "ClientList")
+                    userJobs?.setValuesForKeys(jobs.toDictionary!)
+                    //DatabaseClass.shared.saveEntity()
+                    
+                    let query = "cltId = '\(jobs.tempId!)'"
+                    let isExistJob = DatabaseClass.shared.fetchDataFromDatabse(entityName: "ClientList", query: query) as! [ClientList]
+                    if isExistJob.count > 0 {
+                        let existing = isExistJob[0]
+                        DatabaseClass.shared.deleteEntity(object: existing, callback: { (_) in})
+                    }
+                }
+            }
+        }
+        
+        DatabaseClass.shared.saveEntity(callback: { _ in
+            showDataOnTableView(query: nil)
+        })
+    }
+        
+    
+        
+    //=======================
+    // MARK:- Other methods
+    //=======================
+     func getClientListFromDB() -> Void {
+        
+        if isAdded {
+            showDataOnTableView(query: nil)
+        }
+       
+        if isChanged {
+            self.getClientSink()
+        }
+        
+        isChanged = true
+        isAdded = false
+     }
+   
+    
+    //=====================================
+    // MARK:- Get Clint Sit List  Service
+    //=====================================
+    
+    func getClientSiteSink(){
+        
+        if !isHaveNetowork() {
+            return
+        }
+        
+        let param = Params()
+        let lastRequestTime : String? = UserDefaults.standard.value(forKey: Service.getClientSiteSink) as? String
+        
+        param.compId = getUserDetails()?.compId
+        param.limit = ""
+        param.index = ""
+        param.dateTime = lastRequestTime ?? ""
+        
+        
+        serverCommunicator(url: Service.getClientSiteSink, param: param.toDictionary) { (response, success) in
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(SiteVCResp.self, from: response as! Data) {
+                    if decodedData.success == true{
+                        
+                        if decodedData.data.count > 0 {
+                            UserDefaults.standard.set(CurrentDateTime(), forKey: Service.getClientSiteSink)
+                            self.saveSiteInDataBase(data: decodedData.data)
+                        }
+                      
+                        self.getClientContactSink()
+                    }else{
+                        if let code =  decodedData.statusCode{
+                            if(code == "401"){
+                                ShowAlert(title: getServerMsgFromLanguageJson(key: decodedData.message!), message:"" , controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                    if (Ok){
+                                        DispatchQueue.main.async {
+                                            (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                        }
+                                    }
+                                })
+                            }
+                        }else{
+                            ShowError(message:  getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+                       
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                }
+            }else{
+                //  ShowAlert(title: "Network Error", message: "Please try again!", controller: windowController, cancelButton: "Ok", okButton: nil, style: UIAlertControllerStyle.alert, callback: {_,_ in})
+            }
+        }
+    }
+    
+    //==============================
+    // MARK:- Save data in DataBase
+    //==============================
+    func saveSiteInDataBase( data : [SiteVCRespDetails] ) -> Void {
+        for jobs in data{
+            let query = "siteId = '\(jobs.siteId!)'"
+            let isExist = DatabaseClass.shared.fetchDataFromDatabse(entityName: "ClientSitList", query: query) as! [ClientSitList]
+            if isExist.count > 0 {
+                if(jobs.isdelete == "0"){
+                    let existingJob = isExist[0]
+                    DatabaseClass.shared.deleteEntity(object: existingJob, callback: { (_) in})
+                }else{
+                    let existingJob = isExist[0]
+                    existingJob.setValuesForKeys(jobs.toDictionary!)
+                   // DatabaseClass.shared.saveEntity()
+                }
+            }else{
+                if(jobs.isdelete != "0"){
+                    let userJobs = DatabaseClass.shared.createEntity(entityName: "ClientSitList")
+                    userJobs?.setValuesForKeys(jobs.toDictionary!)
+                   // DatabaseClass.shared.saveEntity()
+                }
+            }
+        }
+        
+        DatabaseClass.shared.saveEntity(callback: { _ in })
+    }
+    
+    //=====================================
+    // MARK:- Get Contact List  Service
+    //=====================================
+
+    func getClientContactSink(){
+        
+        if !isHaveNetowork() {
+            return
+        }
+
+        let param = Params()
+        let lastRequestTime : String? = UserDefaults.standard.value(forKey: Service.getClientContactSink) as? String
+
+        param.compId = getUserDetails()?.compId
+        param.limit = ""
+        param.index = ""
+        param.dateTime = lastRequestTime ?? ""
+
+        serverCommunicator(url: Service.getClientContactSink, param: param.toDictionary) { (response, success) in
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(ContactResps.self, from: response as! Data) {
+                    if decodedData.success == true{
+
+                        //DatabaseClass.shared.saveEntity()
+                        
+                        if decodedData.data.count > 0 {
+                            //Request time will be update when data comes otherwise time won't be update
+                            UserDefaults.standard.set(CurrentDateTime(), forKey: Service.getClientContactSink)
+                            self.saveUserContactInDataBase(data: decodedData.data)
+                        }
+                    }else{
+                        if let code =  decodedData.statusCode{
+                            if(code == "401"){
+                                ShowAlert(title: getServerMsgFromLanguageJson(key: decodedData.message!), message:"" , controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                    if (Ok){
+                                        DispatchQueue.main.async {
+                                            (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                        }
+                                    }
+                                })
+                            }
+                        }else{
+                            ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+                        
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                }
+            }else{
+                //ShowError(message: "Please try again!", controller: windowController)
+            }
+        }
+        //  }
+    }
+
+    //==============================
+    // MARK:- Save contact data in DataBase
+    //==============================
+    func saveUserContactInDataBase( data : [ContactRespsDetails]) -> Void {
+
+        for jobs in data{
+            let query = "conId = '\(jobs.conId!)'"
+            let isExist = DatabaseClass.shared.fetchDataFromDatabse(entityName: "ClientContactList", query: query) as! [ClientContactList]
+            if isExist.count > 0 {
+
+                if(jobs.isdelete == "0"){
+                    let existingJob = isExist[0]
+                    DatabaseClass.shared.deleteEntity(object: existingJob, callback: { (_) in})
+                }else{
+                    let existingJob = isExist[0]
+                    existingJob.setValuesForKeys(jobs.toDictionary!)
+                   // DatabaseClass.shared.saveEntity()
+                }
+
+            }else{
+                if(jobs.isdelete != "0"){
+
+                    let userJobs = DatabaseClass.shared.createEntity(entityName: "ClientContactList")
+                    userJobs?.setValuesForKeys(jobs.toDictionary!)
+                    //DatabaseClass.shared.saveEntity()
+                }
+            }
+        }
+        
+        DatabaseClass.shared.saveEntity(callback: { _ in
+            DispatchQueue.main.async {
+                self.tableView.reloadData()
+            }
+        })
+    }
+
+    func showDataOnTableView(query : String?) -> Void {
+        arrOfShowData = DatabaseClass.shared.fetchDataFromDatabse(entityName: "ClientList", query: query) as! [ClientList]
+        if arrOfShowData.count != 0 {
+            arrOfShowData =  arrOfShowData.sorted { $0.nm?.localizedCaseInsensitiveCompare($1.nm!) == ComparisonResult.orderedAscending }
+            DispatchQueue.main.async {
+                self.tableView.reloadData()
+            }
+        }
+//        }else{
+//            lblClient.isHidden =  true
+//        }
+        DispatchQueue.main.async {
+            self.tableView.isHidden = self.arrOfShowData.count > 0 ? false : true
+        }
+    }
+    
+//    @objc func chatfNotiHandle(_ notification: NSNotification){
+//        if let dict = notification.userInfo as? [String : Any]{
+//            let storyBoard : UIStoryboard = UIStoryboard(name: "MainJob", bundle:nil)
+//            if jobTabVC != nil {
+//                jobTabVC!.navigationController?.popViewController(animated: false)
+//            }
+//            
+//            jobTabVC = (storyBoard.instantiateViewController(withIdentifier: "jobTab") as! JobTabController)
+//            jobTabVC!.jobs = arrOFUserData
+//            
+////            let currentJob = arrOFUserData.filter { (model) -> Bool in
+////                if model.jobId == (dict["jobId"] as! String) {
+////                    return true
+////                }
+////                return false
+////            }
+//            let query = "jobId = '\(dict["jobId"]!)'"
+//            let currentJob = DatabaseClass.shared.fetchDataFromDatabse(entityName: "UserJobList", query: query) as! [UserJobList]
+//            
+//            if currentJob.count > 0 {
+//                jobTabVC!.objOfUserJobList = currentJob[0]
+//                jobTabVC!.isChatTabSelected = true
+//                jobTabVC!.callback =  {(isDelete : Bool, object : NSManagedObject) -> Void in
+//                    if isDelete{
+//                        self.jobTabVC!.navigationController?.popViewController(animated: true)
+//                    }
+//                }
+//                DispatchQueue.main.async {
+//                    let controller = self.topMostViewController()
+//                    controller.navigationController?.pushViewController(self.jobTabVC!, animated: true)
+//                }
+//            }else {
+//                let mess = AlertMessage.sorryThisJobNoLonger
+//                let newString = mess.replacingOccurrences(of: EOT_VAR, with: "'\(dict["jobCode"] as! String)'")
+//                ShowError(message: newString, controller: windowController)
+//
+//            }
+//        }
+//    }
+//    
+//    @objc func clientChatNotiHandle(_ notification: NSNotification){
+//        if let dict = notification.userInfo as? [String : Any]{
+//            let vc = UIStoryboard.init(name: "MainClientChat", bundle: Bundle.main).instantiateViewController(withIdentifier: "CLIENTCHATE") as? ClientChatVC
+//            
+//            let query = "jobId = '\(dict["jobId"]!)'"
+//            let currentJob = DatabaseClass.shared.fetchDataFromDatabse(entityName: "UserJobList", query: query) as! [UserJobList]
+//            
+//            if currentJob.count > 0 {
+//                vc!.objOfUserJobListInDetail = currentJob[0]
+//                DispatchQueue.main.async {
+//                    self.navigationController?.pushViewController(vc!, animated: true)
+//                }
+//            }
+//        }
+//    }
+    
+}//END

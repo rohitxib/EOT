@@ -1,0 +1,253 @@
+//
+//  EditContactVC.swift
+//  EyeOnTask
+//
+//  Created by Apple on 14/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+import IQKeyboardManagerSwift
+
+class EditContactVC: UIViewController , UITextFieldDelegate {
+    var objOFEditContactVC : ClientContactList?
+    var objOFClient : ClientList?
+    
+ 
+       var sltIdex : Int?
+    
+    
+    @IBOutlet weak var btnUpDate: UIButton!
+    
+    @IBOutlet var txtField_Name: UITextField!
+    @IBOutlet var txtField_Email: UITextField!
+    @IBOutlet var txtField_mobNo: UITextField!
+    @IBOutlet var txtField_AltMobNo: UITextField!
+    @IBOutlet var txtField_Fax: UITextField!
+    @IBOutlet var txtField_Skype: UITextField!
+    @IBOutlet var txtField_Twitter: UITextField!
+    
+    @IBOutlet weak var btnDefault: UIButton!
+    @IBOutlet weak var scrollVw: UIScrollView!
+     var callbackForContactVC: ((Bool,Int) -> Void)?
+     var isSelf = Bool()
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        DispatchQueue.main.async {
+            if Constants.kIphone_5 || Constants.kIphone_4s {
+                self.scrollVw.isScrollEnabled = true
+            }
+            self.setUpMethod()
+        }
+        
+        setLocalization()
+        
+        ActivityLog(module:Modules.contact.rawValue , message: ActivityMessages.clientContactUpdate)
+
+    }
+    
+    
+    func setLocalization() -> Void {
+        
+        self.navigationItem.title = LanguageKey.edit_contact
+        txtField_Name.placeholder = "\(LanguageKey.contact_name) *"
+        txtField_Email.placeholder = "\(LanguageKey.email) *"
+        txtField_mobNo.placeholder = "\(LanguageKey.mob_no) *"
+        txtField_AltMobNo.placeholder = LanguageKey.alt_mobile_number
+        txtField_Fax.placeholder = LanguageKey.fax
+        txtField_Skype.placeholder = LanguageKey.skype
+        txtField_Twitter.placeholder = LanguageKey.twitter
+        btnDefault.setTitle(LanguageKey.default_contact , for: .normal)
+        btnUpDate.setTitle(LanguageKey.update , for: .normal)
+        //  let alrtsite = getValueFromLanguageJson(key: "format_problem")
+        
+    }
+    
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(true)
+        //self.navigationController?.navigationBar.topItem?.title = "";
+    }
+    
+    func setUpMethod(){
+        txtField_Name.text = objOFEditContactVC?.cnm?.capitalizingFirstLetter()
+        txtField_Email.text = objOFEditContactVC?.email
+        txtField_mobNo.text = objOFEditContactVC?.mob1
+        txtField_AltMobNo.text = objOFEditContactVC?.mob2
+        txtField_Fax.text = objOFEditContactVC?.fax
+        txtField_Skype.text = objOFEditContactVC?.skype
+        txtField_Twitter.text = objOFEditContactVC?.twitter
+        
+        if objOFEditContactVC?.def == "0" {
+            btnDefault.setImage(UIImage(named:"BoxOFUncheck"), for: .normal)
+        }else{
+             btnDefault.isUserInteractionEnabled = false
+             btnDefault.setImage(UIImage(named:"BoxOFCheck"), for: .normal)
+        }
+        
+        if let contactname = objOFEditContactVC?.cnm{
+            if contactname.lowercased() == "self" {
+                  isSelf = true
+                  txtField_Name.isUserInteractionEnabled = false
+                  txtField_Name.textColor = UIColor.lightGray
+            }
+        }
+
+    }
+    
+    
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        if (textField == txtField_mobNo) || (textField == txtField_AltMobNo){
+            if (string != "") && (textField.text?.count)! > 14 {
+                return false
+            }
+            
+            let aSet = NSCharacterSet(charactersIn:"0123456789").inverted
+            let compSepByCharInSet = string.components(separatedBy: aSet)
+            let numberFiltered = compSepByCharInSet.joined(separator: "")
+            return string == numberFiltered
+        }
+        return true
+    }
+    
+    
+    
+    @IBAction func updateBtnAction(_ sender: Any) {
+        
+        if isSelf == false{
+            let siteName = txtField_Name.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+               if siteName?.lowercased() == "self"{
+                   let mess = AlertMessage.do_not_use_this_name
+                   let newString = mess.replacingOccurrences(of: EOT_VAR, with: "'\(txtField_Name.text!)'")
+                   ShowError(message: newString, controller: windowController)
+                   return
+               }
+        }
+        
+        
+        let trimmMobNo = trimString(string: self.txtField_mobNo.text!)
+        let trimmAltMobNo = trimString(string: self.txtField_AltMobNo.text!)
+        
+        if (trimmMobNo.count > 0) && (trimmMobNo.count < 8) {
+            ShowError(message: AlertMessage.validMobile, controller: windowController)
+                return
+            }
+        
+        
+        if trimmAltMobNo.count > 0 && trimmAltMobNo.count < 8  {
+            ShowError(message: AlertMessage.validAlMobileNo, controller: windowController)
+                return
+            }
+        
+        
+        
+        if(txtField_Name.text?.trimmingCharacters(in: .whitespacesAndNewlines) != ""){
+            if isValidEmail(testStr: txtField_Email.text!) {
+                if (txtField_mobNo.text!.count >= 8){
+                    self.updateUserContact()
+                }else{
+                    ShowError(message: AlertMessage.validMobileNo, controller: windowController)
+                }
+            }else{
+                ShowError(message: AlertMessage.enterValidEmail, controller: windowController)
+            }
+        }else{
+            ShowError(message: AlertMessage.enterClientName, controller: windowController)
+        }
+    }
+    
+    //=====================================
+    // MARK:- Get Contact List  Service
+    //=====================================
+    
+    func updateUserContact(){
+        /*
+         conId -> contact id
+         nm -> contact name
+         lnm ->last name
+         email -> email
+         mob1 -> mobile no-1
+         mob2 -> mobile no- 2
+         fax -> fax number
+         twitter -> twitter id
+         skype -> skype id
+         isActive -> 0/1
+         default -> 1 - YES and 0 - NO
+         */
+        
+        
+        let param = Params()
+        param.cltId = objOFEditContactVC?.cltId
+        param.conId = objOFEditContactVC?.conId
+        param.cnm = txtField_Name.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        param.email = txtField_Email.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        param.mob1 = txtField_mobNo.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        param.mob2 = txtField_AltMobNo.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        param.fax = txtField_Fax.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        param.twitter = txtField_Twitter.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        param.skype = txtField_Skype.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        param.def = btnDefault.imageView?.image == UIImage.init(named: "BoxOFCheck") ? "1" : "0"
+        
+        
+        //CHANGE in LOCAL DATABASE
+        self.objOFEditContactVC?.setValuesForKeys(param.toDictionary!)
+
+        var isDefault = Bool()
+        
+        if  param.def == "1"{
+            
+            //Change Address for client list for default
+            objOFClient?.mob1 = param.mob1
+            objOFClient?.mob2 = param.mob2
+            objOFClient?.email = param.email
+            
+            isDefault = true
+        }
+        
+        DatabaseClass.shared.saveEntity(callback: { isSuccess in
+            if self.callbackForContactVC != nil {
+                self.callbackForContactVC!(isDefault,self.sltIdex!)
+            }
+            
+            showToast(message: AlertMessage.contactUpdate) //Alert message
+            
+            DatabaseClass.shared.saveOffline(service: Service.updateClientContact, param: param)
+            self.navigationController?.popViewController(animated: true)
+        })
+        
+    }
+  
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+        // Dispose of any resources that can be recreated.
+    }
+    
+
+    @IBAction func btnDefaultPressed(_ sender: Any) {
+   
+        if btnDefault.imageView?.image == UIImage.init(named: "BoxOFCheck") {
+            btnDefault.setImage(UIImage(named:"BoxOFUncheck"), for: .normal)
+        }else{
+            btnDefault.setImage(UIImage(named:"BoxOFCheck"), for: .normal)
+        }
+    }
+    
+    //========================================
+    //MARK:-  Stop Copy Paste of Numbers Filed
+    //========================================
+    
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if txtField_mobNo.isFirstResponder || txtField_AltMobNo.isFirstResponder || txtField_Fax.isFirstResponder {
+            DispatchQueue.main.async(execute: {
+                (sender as? UIMenuController)?.setMenuVisible(false, animated: false)
+            })
+            return false
+        }
+        
+        return super.canPerformAction(action, withSender: sender)
+    }
+    
+}

@@ -1,0 +1,23 @@
+//
+//  NavClientController.swift
+//  EyeOnTask
+//
+//  Created by Apple on 12/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+
+class NavClientController: UINavigationController{
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        self.interactivePopGestureRecognizer?.isEnabled = false
+        self.navigationBar.setBackgroundImage(UIImage(), for: UIBarMetrics.default)
+        self.navigationBar.shadowImage = UIImage()
+    }
+
+    override func didReceiveMemoryWarning() {
+        super.didReceiveMemoryWarning()
+    }
+}

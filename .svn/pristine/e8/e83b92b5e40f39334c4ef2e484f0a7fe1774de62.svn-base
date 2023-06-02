@@ -1,0 +1,84 @@
+//
+//  CustomFormListV.swift
+//  EyeOnTask
+//
+//  Created by Hemant-Aplite on 29/04/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+import UIKit
+
+class CustomFormListV: UIViewController {
+
+    @IBOutlet weak var tblViewCustomForm: UITableView!
+    @IBOutlet weak var lblMessageAlert: UILabel!
+    var selectedCell : IndexPath? = nil
+     var objOfUserJobListInDetail : UserJobList?
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        self.title = LanguageKey.title_cutomform
+        
+        if APP_Delegate.arrOFCustomForm.count == 0 {
+            self.lblMessageAlert.isHidden = false
+            self.lblMessageAlert.text = LanguageKey.no_form_added_for_this_job
+        }
+    }
+    
+}
+
+
+extension CustomFormListV : UITableViewDelegate, UITableViewDataSource {
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return APP_Delegate.arrOFCustomForm.count
+    }
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+          let cell = tableView.dequeueReusableCell(withIdentifier: "formCell") as! CustomFormCell
+         let forms = APP_Delegate.arrOFCustomForm[indexPath.row]
+        cell.lblName.text = forms.frmnm
+        if selectedCell == indexPath {
+            cell.backgroundVw.backgroundColor = UIColor.init(red: 236.0/255.0, green: 244.0/255.0, blue: 245.0/255.0, alpha: 1.0)
+        }else{
+            cell.backgroundVw.backgroundColor = UIColor.white
+        }
+        
+        cell.selectionStyle  = .none
+        
+        return cell
+    }
+    
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        if (selectedCell != nil) {
+            //If selected cell exist on visible indexpaths
+            let isExist = tableView.indexPathsForVisibleRows?.contains(selectedCell!)
+            if isExist!{
+                let cellPrevious = tableView.cellForRow(at: selectedCell!) as! CustomFormCell
+                cellPrevious.backgroundVw.backgroundColor = .white
+            }
+        }
+        
+        let cell = tableView.cellForRow(at: indexPath) as! CustomFormCell
+        cell.backgroundVw.backgroundColor = UIColor.init(red: 236.0/255.0, green: 244.0/255.0, blue: 245.0/255.0, alpha: 1.0)
+        self.selectedCell = indexPath
+        
+      
+        let customFormVC = self.storyboard?.instantiateViewController(withIdentifier: "CustomFormVC") as! CustomFormVC
+        
+        customFormVC.objOFTestVC = APP_Delegate.arrOFCustomForm[indexPath.row]
+        customFormVC.sltNaviCount = 0
+        customFormVC.clickedEvent = nil
+        customFormVC.isCameFrmStatusBtnClk = true
+        customFormVC.objOfUserJobList = self.objOfUserJobListInDetail!
+        self.navigationItem.backBarButtonItem = UIBarButtonItem(title:nil, style: .plain, target: nil, action: nil)
+        self.navigationController?.pushViewController(customFormVC, animated: true)
+        
+    }
+    
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 70.0
+    }
+    
+}

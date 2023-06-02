@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>619590580003-5fnuqn6qh1uuvpd08toql1e8doo65pom.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.619590580003-5fnuqn6qh1uuvpd08toql1e8doo65pom</string>
+	<key>API_KEY</key>
+	<string>AIzaSyC-2WbLCA7XMjkfAhceYmBD7EzV0FiZSOE</string>
+	<key>GCM_SENDER_ID</key>
+	<string>619590580003</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.aplite.eyeontask</string>
+	<key>PROJECT_ID</key>
+	<string>eyeontask-7f763</string>
+	<key>STORAGE_BUCKET</key>
+	<string>eyeontask-7f763.appspot.com</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:619590580003:ios:22e4fbc614a593914c3e96</string>
+	<key>DATABASE_URL</key>
+	<string>https://eyeontask-7f763.firebaseio.com</string>
+</dict>
+</plist>

@@ -1,0 +1,51 @@
+//
+//  AuditListResponse.swift
+//  EyeOnTask
+//
+//  Created by Mojave on 12/11/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+import Foundation
+
+class AuditListResponse: Codable {
+    var success: Bool?
+    var message: String?
+    var data: [AuditListData]?
+    var count: String?
+    var statusCode: String?
+}
+
+
+class AuditListData: Codable {
+   var audId : String?
+   var parentId : String?
+   var label : String?
+   var des : String?
+   var type : String?
+   var prty : String?
+   var status : String?
+   var kpr : String?
+   var athr : String?
+   var schdlStart : String?
+   var schdlFinish : String?
+   var inst : String?
+   var cnm : String?
+   var email : String?
+   var mob1 : String?
+   var mob2 : String?
+   var adr : String?
+   var city : String?
+   var state : String?
+   var ctry : String?
+   var zip : String?
+   var createDate : String?
+   var updateDate : String?
+   var lat : String?
+   var lng : String?
+   var compid : String?
+   var landmark : String?
+   var tagData : [tagDataArray]?
+   
+    
+}

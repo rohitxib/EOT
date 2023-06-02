@@ -1,0 +1,15 @@
+//
+//  GenerateInvoice.swift
+//  EyeOnTask
+//
+//  Created by Mac on 08/05/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+import Foundation
+
+class CommonResponse : Codable {
+    var success: Bool?
+    var message: String?
+    var statusCode: String?
+}

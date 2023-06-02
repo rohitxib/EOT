@@ -1,0 +1,859 @@
+//
+//  DocumentVC.swift
+//  EyeOnTask
+//
+//  Created by mac on 09/10/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+import CoreData
+import Photos
+import MobileCoreServices
+import IQKeyboardManagerSwift
+
+class DocumentVC: UIViewController, UITextFieldDelegate, UINavigationControllerDelegate,UIImagePickerControllerDelegate {
+    
+    @IBOutlet weak var collectionVwDocs: UICollectionView!
+    @IBOutlet weak var lblAlertMess: UILabel!
+    @IBOutlet weak var txtSearchField: UITextField!
+    var imagePicker = UIImagePickerController()
+    var objOfUserJobListInDoc = UserJobList()
+    var arrOfShowData = [DocResDataDetails]()
+    var arrOfFilterData = [DocResDataDetails]()
+    var uploadImage : UIImage? = nil
+    var callback: ((Bool,NSManagedObject) -> Void)?
+    let screenWidth = UIScreen.main.bounds.width
+    let screenHeight = UIScreen.main.bounds.height
+    var refreshControl = UIRefreshControl()
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        self.title = LanguageKey.title_documents
+        txtSearchField.placeholder = LanguageKey.search
+        lblAlertMess.text = LanguageKey.documet_appear
+        self.setUpMethod()
+        self.getDocumentsList()
+        
+        let layout: UICollectionViewFlowLayout = UICollectionViewFlowLayout()
+        layout.sectionInset = UIEdgeInsets(top: 0, left: 5, bottom: 0, right: 5)
+        layout.itemSize = CGSize(width: screenWidth/2 - 7, height: screenWidth/2 - 7)
+        layout.minimumInteritemSpacing = 0
+        layout.minimumLineSpacing = 5
+        collectionVwDocs!.collectionViewLayout = layout
+        
+        
+        refreshControl.attributedTitle = NSAttributedString(string: " ")
+        refreshControl.addTarget(self, action: #selector(refreshControllerMethod), for: UIControl.Event.valueChanged)
+        collectionVwDocs.addSubview(refreshControl) // not required when using UITableViewController
+        
+         showLoader()
+        
+        let swipeRight = UISwipeGestureRecognizer(target: self, action: #selector(swiped))
+              swipeRight.direction = UISwipeGestureRecognizer.Direction.right
+              self.view.addGestureRecognizer(swipeRight)
+              
+              let swipeLeft = UISwipeGestureRecognizer(target: self, action: #selector(swiped))
+              swipeLeft.direction = UISwipeGestureRecognizer.Direction.left
+              self.view.addGestureRecognizer(swipeLeft)
+              
+        
+        
+        ActivityLog(module:Modules.job.rawValue , message: ActivityMessages.jobDocuments)
+    }
+    
+    
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        
+        self.tabBarController?.navigationItem.title = LanguageKey.title_documents
+        
+        if let button = self.parent?.navigationItem.rightBarButtonItem {
+            button.isEnabled = false
+            button.tintColor = UIColor.clear
+        }
+    }
+    
+    @objc func swiped(_ gesture: UISwipeGestureRecognizer) {
+            if gesture.direction == .left {
+                if (self.tabBarController?.selectedIndex)! < 5 { // set your total tabs here
+                    self.tabBarController?.selectedIndex += 1
+                }
+            } else if gesture.direction == .right {
+                if (self.tabBarController?.selectedIndex)! > 0 {
+                    self.tabBarController?.selectedIndex -= 1
+                }
+            }
+        }
+      
+    
+    @objc func refreshControllerMethod() {
+        getDocumentsList()
+    }
+    
+    
+    func setUpMethod(){
+        let paddingView = UIView(frame: CGRect(x: 0, y: 0, width: 15, height: self.txtSearchField.frame.height))
+        txtSearchField.leftView = paddingView
+        txtSearchField.leftViewMode = UITextField.ViewMode.always
+        
+        let paddingView1 = UIView(frame: CGRect(x: 0, y: 0, width: 20, height: self.txtSearchField.frame.height))
+        txtSearchField.rightView = paddingView1
+        txtSearchField.rightViewMode = UITextField.ViewMode.always
+    }
+    
+    
+    
+    
+    @IBAction func galleryBtn(_ sender: Any) {
+        openGallery()
+    }
+    
+    //=============================
+    // MARK:- Open gallery methods
+    //=============================
+    func openGallery(){
+        
+        
+        if !isHaveNetowork(){
+            ShowError(message: AlertMessage.networkIssue, controller: windowController)
+            return
+        }
+        
+        
+        //Create the AlertController and add Its action like button in Actionsheet
+        let actionSheetControllerIOS8: UIAlertController = UIAlertController(title: LanguageKey.please_select, message: nil, preferredStyle: .actionSheet)
+        
+        let cancelActionButton = UIAlertAction(title: LanguageKey.cancel , style: .cancel) { _ in
+            // print("Cancel")
+        }
+        actionSheetControllerIOS8.addAction(cancelActionButton)
+        
+        
+        
+        let camera = UIAlertAction(title: LanguageKey.camera, style: .default)
+        { _ in
+            if UIImagePickerController.isSourceTypeAvailable(.camera){
+                self.imagePicker.delegate = self
+                self.imagePicker.sourceType = .camera;
+                self.imagePicker.allowsEditing = false
+                APP_Delegate.showBackButtonText()
+                self.present(self.imagePicker, animated: true, completion: {
+                    
+                })
+            }
+        }
+        
+        let gallery = UIAlertAction(title: LanguageKey.gallery, style: .default)
+        { _ in
+            if UIImagePickerController.isSourceTypeAvailable(.photoLibrary){
+                self.imagePicker.delegate = self
+                self.imagePicker.sourceType = .photoLibrary;
+                self.imagePicker.allowsEditing = false
+                APP_Delegate.showBackButtonText()
+                self.present(self.imagePicker, animated: true, completion: {
+                    
+                })
+            }
+        }
+        
+        
+        let document = UIAlertAction(title: LanguageKey.document, style: .default)
+        { _ in
+            
+            
+            let kUTTypeDOC = "com.microsoft.word.doc" // for Doc file
+            let kUTTypeDOCX = "org.openxmlformats.wordprocessingml.document" // for Docx file
+            let kUTTypeXls = "com.microsoft.excel.xls"
+            let kUTTypeXlsx = "org.openxmlformats.spreadsheetml.sheet"
+            
+            //'jpg','png','jpeg','pdf','doc','docx','xlsx','csv','xls'
+            let documentPicker = UIDocumentPickerViewController(documentTypes: [String(kUTTypePNG),String(kUTTypeJPEG),String(kUTTypePDF),String(kUTTypeCommaSeparatedText),kUTTypeXls,kUTTypeXlsx,kUTTypeDOCX,kUTTypeDOC], in: .import)
+            documentPicker.delegate = self
+            APP_Delegate.showBackButtonTextForFileMan()
+            self.present(documentPicker, animated: true, completion: nil)
+        }
+        
+        actionSheetControllerIOS8.addAction(gallery)
+        actionSheetControllerIOS8.addAction(camera)
+        actionSheetControllerIOS8.addAction(document)
+        self.present(actionSheetControllerIOS8, animated: true, completion: nil)
+    }
+    
+    
+    public func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+        // Local variable inserted by Swift 4.2 migrator.
+        let info = convertFromUIImagePickerControllerInfoKeyDictionary(info)
+        
+        
+        self.dismiss(animated: true, completion: { () -> Void in
+            
+        })
+        
+
+        let status = PHPhotoLibrary.authorizationStatus()
+        if (status == .denied || status == .restricted) {
+            ShowAlert(title: "", message: LanguageKey.photo_denied, controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: {_,_ in})
+            return
+        }else{
+            PHPhotoLibrary.requestAuthorization { (authStatus) in
+                if authStatus == .authorized{
+                    let imageAsset = PHAsset.fetchAssets(with: .image, options: nil)
+                    // for index in 0..<imageAsset.count{
+                    
+                    if imageAsset.count > 0{
+                        let asset = imageAsset.firstObject
+                        let imgFullName = asset?.value(forKey: "filename") as! String
+                        let arr = imgFullName.components(separatedBy: ".")
+                        let imgExtension = arr.last
+                        let imgName = imgFullName.replacingOccurrences(of: ".\(imgExtension!)", with: "")
+                        if let image = info[convertFromUIImagePickerControllerInfoKey(UIImagePickerController.InfoKey.originalImage)]{
+                        
+                            DispatchQueue.main.async {
+                                  let storyboard = UIStoryboard(name: "MainJob", bundle: nil)
+                                  let vc = storyboard.instantiateViewController(withIdentifier: "docViewEdit") as! DocViewEditorVC
+                                  vc.image = (image as! UIImage)
+                                  vc.name = trimString(string: imgName)
+                                  vc.callback = {(modifiedImage, imageName, imageDescription) in
+                                    self.uploadImage = modifiedImage
+                                    self.uploadDocuments(imgName: imageName, imageDes: imageDescription) { () -> (Void) in
+                                        DispatchQueue.main.async {
+                                             vc.navigationController?.popViewController(animated: true)
+                                        }
+                                    }
+                                }
+                                  self.navigationController!.pushViewController(vc, animated: true)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    
+    
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true, completion: nil)
+        
+        APP_Delegate.hideBackButtonText()
+    }
+    
+//    func openImageNameAlert(imgName : String, fileUrl:URL){
+//        
+//        ////////////// Alert Method //////////////
+//        let alert = UIAlertController(title:"", message: AlertMessage.changeImageName, preferredStyle: .alert)
+//        var txtField = UITextField()
+//        alert.addTextField { (textField) in
+//            let textField = alert.textFields![0]
+//            textField.text = imgName
+//            txtField = textField
+//        }
+//        
+//        
+//        
+//        alert.addAction(UIAlertAction(title: LanguageKey.cancel, style: .default, handler: { ( done ) in
+//        }))
+//        
+//        alert.addAction(UIAlertAction(title: LanguageKey.done, style: .cancel, handler: { ( done ) in
+//            self.uploadMediaDocuments(fileUrl: fileUrl, fileName: txtField.text!)
+//        }))
+//        
+//        windowController.present(alert, animated: true, completion: nil)
+//        
+//    }
+    //==========================
+    // MARK:- Textfield methods
+    //==========================
+    
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        let result = (textField.text as NSString?)?.replacingCharacters(in: range, with: string) ?? string
+        self.arrOfFilterData.removeAll()
+        
+        if result.count > 2 || result.count == 0 {
+            if result != "" {
+                self.arrOfFilterData = self.arrOfShowData.filter() { ($0.attachFileActualName?.lowercased().contains(result.lowercased()))! }
+            }
+            
+            self.collectionVwDocs.isHidden = ((self.arrOfFilterData.count > 0) || (result == "")) ? false : true
+            
+            DispatchQueue.main.async {
+                self.collectionVwDocs.reloadData()
+            }
+        }
+        
+        return true
+    }
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {   //delegate method
+        textField.resignFirstResponder()
+        return true
+    }
+    
+    
+    //=====================================
+    // MARK:- Get all Document List Service
+    //=====================================
+    
+    func getDocumentsList(){
+        /*
+         jobId -> Job  id
+         */
+        
+        if !isHaveNetowork() {
+            DispatchQueue.main.async {
+                self.lblAlertMess.isHidden = false
+                self.collectionVwDocs.isHidden = true
+                
+            }
+            return
+        }
+        
+        // let lastRequestTime : String? = UserDefaults.standard.value(forKey: Service.getDocumentsList) as? String
+       
+        let param = Params()
+        param.jobId = objOfUserJobListInDoc.jobId
+        param.usrId = getUserDetails()?.usrId
+        
+        serverCommunicator(url: Service.getDocumentsList, param: param.toDictionary) { (response, success) in
+            killLoader()
+            
+            DispatchQueue.main.async {
+                if self.refreshControl.isRefreshing {
+                    self.refreshControl.endRefreshing()
+                }
+            }
+            
+            
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(DocumentRes.self, from: response as! Data) {
+                    DispatchQueue.main.async {
+                        self.lblAlertMess.isHidden = true
+                    }
+                    
+                    if decodedData.success == true{
+                        
+                        if (decodedData.data?.count ?? 0) > 0 {
+                            
+                             self.arrOfShowData.removeAll()
+                            
+                            DispatchQueue.main.async {
+                                
+                                
+                                let obj = decodedData.data![0]
+                                if (obj.jobid != nil && obj.jobid != ""){ //Only For Remove job when Admin Unassign job for FW
+                                    ShowAlert(title: "", message: AlertMessage.removeJobFromAdmin, controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (isCancel, isOk) in
+                                        if(isCancel){
+                                            ChatManager.shared.removeJobForChat(jobId: obj.jobid!)
+                                            DatabaseClass.shared.deleteEntity(object: self.objOfUserJobListInDoc, callback: { (isDelete : Bool) in
+                                                if (self.callback != nil){
+                                                    self.callback!(true, self.objOfUserJobListInDoc)
+                                                }
+                                            })
+                                        }
+                                    })
+                                }else{
+                                    self.collectionVwDocs.isHidden = false
+                                    self.arrOfShowData = decodedData.data!
+                                    self.collectionVwDocs.reloadData()
+                                }
+                                
+                            }
+                            
+                        }else{
+                            
+                            DispatchQueue.main.async {
+                                self.lblAlertMess.isHidden = false
+                                self.collectionVwDocs.isHidden = true
+                                
+                            }
+                        }
+                        
+                        
+                    }else{
+                        
+                        if let code =  decodedData.statusCode{
+                            if(code == "401"){
+                                ShowAlert(title: getServerMsgFromLanguageJson(key: decodedData.message!), message:"" , controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                    if (Ok){
+                                        DispatchQueue.main.async {
+                                            (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                        }
+                                    }
+                                })
+                            }
+                        }else{
+                            ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                }
+            }else{
+                ShowError(message: errorString, controller: windowController)
+            }
+        }
+    }
+    
+    
+    //=====================================
+    // MARK:- Update Document Description
+    //=====================================
+    
+    func updateDocumentDescription(documentid : String, documentDescription : String, completion : @escaping (()->(Void))) {
+        /*
+         jobId -> Job  id
+         */
+        
+        if !isHaveNetowork() {
+            DispatchQueue.main.async {
+                self.lblAlertMess.isHidden = false
+                self.collectionVwDocs.isHidden = true
+                
+            }
+            return
+        }
+        
+        // let lastRequestTime : String? = UserDefaults.standard.value(forKey: Service.getDocumentsList) as? String
+         showLoader()
+        let param = Params()
+        param.jaId = documentid
+        param.des = documentDescription
+        
+        serverCommunicator(url: Service.updateDocument, param: param.toDictionary) { (response, success) in
+            killLoader()
+            
+            DispatchQueue.main.async {
+                if self.refreshControl.isRefreshing {
+                    self.refreshControl.endRefreshing()
+                }
+            }
+            
+            completion()
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(CommonResponse.self, from: response as! Data) {
+                    DispatchQueue.main.async {
+                        self.lblAlertMess.isHidden = true
+                    }
+                    
+                    if decodedData.success == true{
+                        ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                    }else{
+                        
+                        if let code =  decodedData.statusCode{
+                            if(code == "401"){
+                                ShowAlert(title: getServerMsgFromLanguageJson(key: decodedData.message!), message:"" , controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                    if (Ok){
+                                        DispatchQueue.main.async {
+                                            (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                        }
+                                    }
+                                })
+                            }
+                        }else{
+                            ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                }
+            }else{
+                ShowError(message: errorString, controller: windowController)
+            }
+        }
+    }
+    
+    
+    
+    //=====================================
+    // MARK:- Upload Document Service
+    //=====================================
+    
+    func uploadDocuments(imgName : String, imageDes : String, completion : @escaping (()->(Void))) -> Void {
+        
+        if !isHaveNetowork() {
+            DispatchQueue.main.async {
+                ShowError(message: AlertMessage.checkNetwork, controller: windowController)
+            }
+            return
+        }
+        
+        showLoader()
+        let param = Params()
+        param.usrId = getUserDetails()?.usrId
+        param.jobId = objOfUserJobListInDoc.jobId
+        param.type = "2"
+        param.device_Type = "2"
+        param.des = imageDes
+        
+        
+        serverCommunicatorUplaodImage(url: Service.uploadDocument, param: param.toDictionary, image: uploadImage, imagePath: "ja", imageName: imgName) { (response, success) in
+            if(success){
+                let decoder = JSONDecoder()
+                
+                completion()
+                
+                if let decodedData = try? decoder.decode(AddDocumentRes.self, from: response as! Data) {
+                    if decodedData.success == true{
+                        DispatchQueue.main.async{
+                            
+                            killLoader()
+                            
+                            if(decodedData.data!.count > 0){
+                                self.lblAlertMess.isHidden = true
+                                self.collectionVwDocs.isHidden = false
+                                self.arrOfShowData.insert(decodedData.data![0], at: 0)
+                                self.collectionVwDocs.reloadData()
+                                ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                                
+                            }else{
+                                killLoader()
+                                ShowAlert(title: LanguageKey.success, message:getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                            }
+                        }
+                    }else{
+                        killLoader()
+                        if let code =  decodedData.statusCode{
+                            if(code == "401"){
+                                ShowAlert(title: getServerMsgFromLanguageJson(key: decodedData.message!), message:"" , controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                    if (Ok){
+                                        DispatchQueue.main.async {
+                                            (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                        }
+                                    }
+                                })
+                            }
+                        }else{
+                            ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+                    }
+                }else{
+                    killLoader()
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                }
+            }else{
+                killLoader()
+                ShowError(message: errorString, controller: windowController)
+            }
+        }
+    }
+
+}
+
+extension DocumentVC: UICollectionViewDelegate, UICollectionViewDataSource {
+    
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return self.arrOfFilterData.count > 0 ? self.arrOfFilterData.count :  self.arrOfShowData.count
+    }
+    
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "docCell", for: indexPath as IndexPath) as! DocumentCell
+        let docResDataDetailsObj = self.arrOfFilterData.count > 0 ? self.arrOfFilterData[indexPath.row] :  self.arrOfShowData[indexPath.row]
+        
+        cell.lblName.text = docResDataDetailsObj.attachFileActualName
+        
+        if let img = docResDataDetailsObj.attachThumnailFileName {
+            let imageUrl = Service.BaseUrl + img
+            cell.img.sd_setImage(with: URL(string: imageUrl) , placeholderImage: getImage(fileType: docResDataDetailsObj.image_name ?? "unknownDoc"))
+        }else{
+            cell.img.image = UIImage(named: "unknownDoc")
+        }
+        return cell
+    }
+    
+    
+    func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+
+        let DocResDataDetailsObj = self.arrOfFilterData.count > 0 ? self.arrOfFilterData[indexPath.item] :  self.arrOfShowData[indexPath.item]
+        
+        
+        if DocResDataDetailsObj.type == "1" {
+            DispatchQueue.main.async {
+                if let fileUrl = URL(string: (Service.BaseUrl + DocResDataDetailsObj.attachFileName!)) {
+                    let storyboard = UIStoryboard(name: "MainJob", bundle: nil)
+                        let vc = storyboard.instantiateViewController(withIdentifier: "docViewEdit") as! DocViewEditorVC
+                        vc.name = trimString(string: DocResDataDetailsObj.attachFileActualName ?? "")
+                        vc.docUrl = fileUrl
+                        vc.isSignature = true
+                        self.navigationController!.pushViewController(vc, animated: true)
+                }
+            }
+             return
+        }
+        
+
+        
+        
+        if let fileUrl = URL(string: (Service.BaseUrl + DocResDataDetailsObj.attachFileName!)) {
+            let customView = CustomDocView.instanceFromNib() as? CustomDocView
+            let backgroundView = UIView(frame: CGRect(x: 0, y: 0, width: self.screenWidth, height: self.screenHeight))
+                backgroundView.backgroundColor = UIColor(white: 0.0, alpha: 0.8)
+                
+            customView!.setupMethod(url: fileUrl, image: nil, imageName: DocResDataDetailsObj.attachFileActualName ?? "", imageDescription: DocResDataDetailsObj.des ?? "")
+                customView?.completionHandler = {(editedName,editedDes) in
+           
+                    if DocResDataDetailsObj.des != editedDes {
+                        self.updateDocumentDescription(documentid: DocResDataDetailsObj.attachmentId!, documentDescription: editedDes) {
+                               DocResDataDetailsObj.des = editedDes
+                               DispatchQueue.main.async {
+                                    customView?.removeFromSuperview()
+                                    backgroundView.removeFromSuperview()
+                                }
+                                  
+                           }
+                    }else{
+                        DispatchQueue.main.async {
+                            customView?.removeFromSuperview()
+                            backgroundView.removeFromSuperview()
+                        }
+                    }
+                }
+                         
+              let viewWidth = self.view.bounds.width
+              let viewHeight = self.view.bounds.height
+               
+               customView!.frame = CGRect(x: (viewWidth/2-(customView!.bounds.width/2)), y: (viewHeight/2-(customView!.bounds.height/2)), width: customView!.bounds.width, height:  customView!.bounds.height)
+
+               self.view.addSubview(backgroundView)
+               self.view.addSubview(customView!)
+        }else{
+            ShowError(message: LanguageKey.format_problem, controller: windowController)
+        }
+        
+        
+     
+        
+    }
+    
+    func getImage(fileType : String) -> UIImage {
+        
+        //'jpg','png','jpeg','pdf','doc','docx','xlsx','csv','xls'
+        
+        let filename: NSString = fileType as NSString
+        let pathExtention = filename.pathExtension
+        
+        var imageName = ""
+        switch pathExtention {
+        case "jpg","png","jpeg":
+            imageName = "default-thumbnail"
+            
+        case "pdf":
+            imageName = "pdf"
+            
+        case "doc","docx":
+            imageName = "word"
+            
+        case "xlsx","xls":
+            imageName = "excel"
+            
+        case "csv":
+            imageName = "csv"
+            
+        default:
+            imageName = "unknownDoc"
+        }
+        
+        let image = UIImage(named: imageName)
+        return image!
+        
+    }
+    
+    
+}
+
+// Helper function inserted by Swift 4.2 migrator.
+fileprivate func convertFromUIImagePickerControllerInfoKeyDictionary(_ input: [UIImagePickerController.InfoKey: Any]) -> [String: Any] {
+    return Dictionary(uniqueKeysWithValues: input.map {key, value in (key.rawValue, value)})
+}
+
+// Helper function inserted by Swift 4.2 migrator.
+fileprivate func convertFromUIImagePickerControllerInfoKey(_ input: UIImagePickerController.InfoKey) -> String {
+    return input.rawValue
+}
+
+
+extension DocumentVC: UIDocumentPickerDelegate {
+
+    //=============================
+    // MARK:- Document picker methods
+    //=============================
+    func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) {
+        APP_Delegate.hideBackButtonText()
+    }
+    
+    func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentAt url: URL) {
+        
+        
+        let filename = url.lastPathComponent
+        let splitName = filename.split(separator: ".")
+        let name = splitName.first!
+        let filetype = splitName.last!.lowercased()
+        
+        APP_Delegate.hideBackButtonText()
+        
+        //'jpg','png','jpeg'
+        if filetype == "jpg" || filetype == "png" || filetype == "jpeg" {
+            
+                do {
+                    let imageData = try Data(contentsOf: url as URL)
+    
+                    if let image = UIImage(data: imageData) {
+                        let storyboard = UIStoryboard(name: "MainJob", bundle: nil)
+                        let vc = storyboard.instantiateViewController(withIdentifier: "docViewEdit") as! DocViewEditorVC
+                        vc.image = (image )
+                        vc.name = trimString(string: String(name))
+                        vc.callback = {(modifiedImage, imageName, imageDescription) in
+                          self.uploadImage = modifiedImage
+                          self.uploadDocuments(imgName: imageName, imageDes: imageDescription) { () -> (Void) in
+                              DispatchQueue.main.async {
+                                   vc.navigationController?.popViewController(animated: true)
+                              }
+                          }
+                      }
+                        DispatchQueue.main.async {
+                          self.navigationController!.pushViewController(vc, animated: true)
+                        }
+                    }
+                }catch {
+                    // can't load image data
+                }
+        }else{
+            
+            DispatchQueue.main.async {
+                  let storyboard = UIStoryboard(name: "MainJob", bundle: nil)
+                  let vc = storyboard.instantiateViewController(withIdentifier: "docViewEdit") as! DocViewEditorVC
+                  //vc.image = (image as! UIImage)
+                  vc.name = trimString(string: String(name))
+                  vc.docUrl = url
+                  vc.callbackForDocument = {(fileName, fileDescription) in
+                    self.uploadMediaDocuments(fileUrl: url, fileName: fileName, description: fileDescription) { () -> (Void) in
+                         DispatchQueue.main.async {
+                             vc.navigationController?.popViewController(animated: true)
+                        }
+                    }
+                    
+                }
+                  self.navigationController!.pushViewController(vc, animated: true)
+            }
+        
+        }
+        
+    }
+    
+    func uploadMediaDocuments(fileUrl : URL ,fileName : String, description : String, completion : @escaping (()->(Void))) -> Void {
+        
+        if !isHaveNetowork() {
+            DispatchQueue.main.async {
+                ShowError(message: AlertMessage.checkNetwork, controller: windowController)
+            }
+            return
+        }
+        
+        showLoader()
+        let param = Params()
+        param.usrId = getUserDetails()?.usrId
+        param.jobId = objOfUserJobListInDoc.jobId
+        param.type = "2"
+        param.device_Type = "2"
+        param.des = description
+        
+        serverCommunicatorUplaodDocuments(url: Service.uploadDocument, param: param.toDictionary, docUrl: fileUrl, DocPathOnServer: "ja", docName: fileName) { (response, success) in
+            
+            completion()
+            
+            if(success){
+                
+                
+                
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(AddDocumentRes.self, from: response as! Data) {
+                    if decodedData.success == true{
+                        DispatchQueue.main.async{
+                            
+                            killLoader()
+                            
+                            if(decodedData.data!.count > 0){
+                                self.lblAlertMess.isHidden = true
+                                self.collectionVwDocs.isHidden = false
+                                self.arrOfShowData.insert(decodedData.data![0], at: 0)
+                                self.collectionVwDocs.reloadData()
+                                ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                                
+                            }else{
+                                killLoader()
+                                ShowAlert(title: LanguageKey.success, message:getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                            }
+                        }
+                    }else{
+                        killLoader()
+                        if let code =  decodedData.statusCode{
+                            if(code == "401"){
+                                ShowAlert(title: getServerMsgFromLanguageJson(key: decodedData.message!), message:"" , controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                    if (Ok){
+                                        DispatchQueue.main.async {
+                                            (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                        }
+                                    }
+                                })
+                            }
+                        }else{
+                            ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+                    }
+                }else{
+                    killLoader()
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton:  LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                }
+            }else{
+                killLoader()
+                ShowError(message: errorString, controller: windowController)
+            }
+        }
+        
+        
+        
+        //        let storageRef = Storage.storage().reference().child("\((getUserDetails()?.compId)!)/\(objOfUserJobListInDetail!.jobId!)/\(getCurrentTimeStamp())_\(fileName)")
+        //
+        //        // let uploadTask =    storageRef.putData(uploadData, metadata: metaData){ (metadata, error) in
+        //        let uploadTask =    storageRef.putData(uploadData, metadata: nil){ (metadata, error) in
+        //            if error != nil {
+        //                //print("error")
+        //                completion(nil, nil)
+        //            } else {
+        //                let imageURL = Storage.storage().reference(forURL:  Storage.storage().reference().description).child((metadata?.path!)!)
+        //                imageURL.downloadURL(completion: { (url, error) in
+        //                    completion("\(url!)", metadata?.contentType)
+        //                })
+        //            }
+        //        }
+        //
+        //
+        //        //When uploading  is inprogress ....
+        //        uploadTask.observe(.progress, handler: { (snapshot) in
+        //            guard let progress = snapshot.progress else {
+        //                return
+        //            }
+        //
+        //            let percentage = (Double(progress.completedUnitCount) / Double(progress.totalUnitCount)) * 100
+        //            if self.loadingNotification == nil{
+        //                self.loadingNotification = MBProgressHUD.showAdded(to: windowController.view, animated: true)
+        //            }
+        //            self.loadingNotification!.mode = MBProgressHUDMode.determinateHorizontalBar
+        //            self.loadingNotification!.label.text = "\(Int(percentage))%"
+        //            self.loadingNotification?.detailsLabel.text = "Uploading..."
+        //            self.loadingNotification!.progressObject = progress
+        //        })
+        //
+        //        //When uploading completed...
+        //        uploadTask.observe(.success) { snapshot in
+        //            DispatchQueue.main.async {
+        //                MBProgressHUD.hide(for: windowController.view, animated: true)
+        //                self.loadingNotification = nil
+        //            }
+        //        }
+    }
+    
+}

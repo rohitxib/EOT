@@ -1,0 +1,37 @@
+//
+//  Define.swift
+//  Swift_Demo
+//
+//  Created by Hemant Pandagre on 02/09/17.
+//  Copyright © 2017 Hemant Pandagre. All rights reserved.
+//
+
+import Foundation
+import UIKit
+
+
+let login = "login"
+
+// User Detail
+let userLName = "usr_lname"
+
+
+class Constants {
+    
+    //Screen size
+    static let mainScreenWidth : CGFloat = UIScreen.main.bounds.width
+    static let mainScreenHeight : CGFloat = UIScreen.main.bounds.height
+    
+    // Check Device IPHONE
+    static let kIphone_4s : Bool =  (UIScreen.main.bounds.size.height == 480)
+    static let kIphone_5 : Bool =  (UIScreen.main.bounds.size.height == 568)
+    static let kIphone_6 : Bool =  (UIScreen.main.bounds.size.height == 667)
+    static let kIphone_6_Plus : Bool =  (UIScreen.main.bounds.size.height == 736)
+
+    
+    static let firebaseEmailSuffix = "@eyeontask.com"
+    static let firebaseUserPassword = "123456"
+    static let APPSTORE_URL : String = "https://itunes.apple.com/us/app/eyeontask/id1439586051?mt=8"
+    
+    
+}

@@ -1,0 +1,19 @@
+//
+//  PdfResponse.swift
+//  EyeOnTask
+//
+//  Created by Hemant-Aplite on 02/05/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+import Foundation
+
+class PdfResponse : Codable {
+    var success: Bool?
+    var message: String?
+    var data: PdfData?
+}
+
+class PdfData: Codable {
+    var path : String?
+}

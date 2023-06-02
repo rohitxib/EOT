@@ -1,0 +1,766 @@
+//
+//  AddClientVC.swift
+//  EyeOnTask
+//
+//  Created by Apple on 05/06/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+import IQKeyboardManagerSwift
+
+
+class AddClientVC: UIViewController , OptionViewDelegate , UITextFieldDelegate{
+  
+    
+    
+    @IBOutlet var latitute: UITextField!
+    @IBOutlet var longitute: UITextField!
+    @IBOutlet var scroll_View: UIScrollView!
+    @IBOutlet weak var btnSave: UIButton!
+    @IBOutlet var txtField_ClintNm: UITextField!
+    @IBOutlet var txtfield_AccNm: UITextField!
+    @IBOutlet var txtField_EmailId: UITextField!
+    @IBOutlet var txtField_Addrs: UITextField!
+    @IBOutlet var txtField_MobNm: UITextField!
+    @IBOutlet var txtField_Country: UITextField!
+    @IBOutlet var txtField_State: UITextField!
+    @IBOutlet var txtField_GSTNo: UITextField!
+    @IBOutlet var txtField_Zip: UITextField!
+    @IBOutlet var txtField_City: UITextField!
+    @IBOutlet var txtField_TinNo: UITextField!
+    @IBOutlet var txtField_AccTyp: UITextField!
+    @IBOutlet var txtField_Note: UITextField!
+    @IBOutlet var txtField_Industry: UITextField!
+    @IBOutlet weak var H_lattitude: NSLayoutConstraint!
+    
+    
+    let cellReuseIdentifier = "cell"
+    
+    var callbackForClientVC: ((Bool) -> Void)?
+    var scrollPoint : CGPoint?
+    
+    
+   // let industries = [[ "id" : "1", "name" : "Accounting" ],[ "id" : "2", "name" : "Advertising" ],[ "id" : "3", "name" : "Biotechnology" ],[ "id" : "4", "name" : "Communications" ],[ "id" : "5", "name" : "Consulting" ]];
+    var sltTxtField = UITextField()
+
+    var arrOfShowData = [Any]()
+    var sltDropDownTag : Int!
+    var optionalVw : OptionalView?
+    var arrOfAccType = [UserAccType]()
+    var fltArrOfAccTyp = [UserAccType]()
+    let param = Params()
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        self.registorKeyboardNotification()
+        self.getAccounttype()
+        
+        if getDefaultSettings()?.isJobLatLngEnable == "0" {
+            H_lattitude.constant = 0.0
+        }
+        
+
+        setLocalization()
+        
+        ActivityLog(module:Modules.client.rawValue , message: ActivityMessages.clientAdd)
+    }
+    
+    func setLocalization() -> Void {
+            self.navigationItem.title = LanguageKey.add_client
+            txtField_ClintNm.placeholder = "\(LanguageKey.client_name) *"
+            txtfield_AccNm.placeholder = LanguageKey.Account_type
+            txtField_EmailId.placeholder = "\(LanguageKey.email) *"
+            txtField_MobNm.placeholder = "\(LanguageKey.mob_no) *"
+            txtField_Addrs.placeholder = "\(LanguageKey.address) *"
+            txtField_Country.placeholder = "\(LanguageKey.country) *"
+            txtField_State.placeholder = "\(LanguageKey.state) *"
+            txtField_City.placeholder = LanguageKey.city
+            txtField_Zip.placeholder = LanguageKey.zip
+            txtField_GSTNo.placeholder = LanguageKey.gst_no
+            txtField_TinNo.placeholder = LanguageKey.tin_no
+            txtField_Industry.placeholder = LanguageKey.industry
+            txtField_Note.placeholder = LanguageKey.notes
+            latitute.placeholder = LanguageKey.latitude
+            longitute.placeholder = LanguageKey.longitued
+            btnSave.setTitle(LanguageKey.create_client , for: .normal)
+        
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        IQKeyboardManager.shared.enable = true
+        self.removeKeyboardNotification()
+    }
+    
+    //=====================================
+    //MARK:- Registor Keyboard Notification
+    //=====================================
+    func registorKeyboardNotification(){
+        IQKeyboardManager.shared.enable = false
+
+        NotificationCenter.default.addObserver(self, selector: #selector(self.keyboardWillShow), name: UIResponder.keyboardDidShowNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.keyboardWillHide), name: UIResponder.keyboardDidHideNotification, object: nil)
+    }
+    
+    
+    //=====================================
+    //MARK:- Remove Keyboard Notification
+    //=====================================
+    func removeKeyboardNotification(){
+        
+        NotificationCenter.default.removeObserver(self,name: UIResponder.keyboardDidShowNotification,object: nil)
+        NotificationCenter.default.removeObserver(self,name: UIResponder.keyboardDidHideNotification,object: nil)
+    }
+    
+
+ 
+    @IBAction func saveBtnAction(_ sender: UIButton) {
+        let trimmClintNm  =  self.txtField_ClintNm.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmEmail = self.txtField_EmailId.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmMobNo = self.txtField_MobNm.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmAdr = self.txtField_Addrs.text?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmCountry = param.ctry?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmState = param.state?.trimmingCharacters(in: .whitespacesAndNewlines)
+        
+        if trimmEmail!.count > 0 {
+            if !isValidEmail(testStr: trimmEmail!)  {
+                ShowError(message: AlertMessage.enterValidEmail, controller: windowController)
+                return
+            }
+        }
+        
+        
+        if (trimmMobNo!.count > 0) && (trimmMobNo!.count < 8)  {
+            ShowError(message: AlertMessage.validMobile, controller: windowController)
+            return
+        }
+        
+        
+        
+        if(trimmClintNm != nil && trimmClintNm != ""){
+            if(trimmEmail != nil && trimmEmail != ""){
+                if(trimmMobNo != nil && trimmMobNo != ""){
+                    if(trimmAdr != nil && trimmAdr != ""){
+                        if(trimmCountry != nil && trimmCountry != ""){
+                            if(trimmState != nil && trimmState != ""){
+                                 addClint()
+                            }else{
+                                ShowError(message: AlertMessage.validState, controller: windowController)
+                            }
+                        }else{
+                            ShowError(message: AlertMessage.validCountry, controller: windowController)
+                        }
+                    }else{
+                        ShowError(message: AlertMessage.validAddress, controller: windowController)
+                    }
+                }else{
+                    ShowError(message: AlertMessage.addClientMobileNumber, controller: windowController)
+                }
+            }else{
+                ShowError(message: AlertMessage.enterValidEmail, controller: windowController)
+            }
+        }else{
+            ShowError(message: AlertMessage.clientName, controller: windowController)
+        }
+    }
+    
+    
+    func getCountry() -> NSArray {
+        return getJson(fileName: "countries")["countries"] as! NSArray
+    }
+    
+    func getStates() -> NSArray {
+        return getJson(fileName: "states")["states"] as! NSArray
+    }
+    
+
+//==========================
+//MARK:- Btn Action Methhod
+//==========================
+    @IBAction func btnDwopDownAction(_ sender: UIButton) {
+        self.sltDropDownTag = sender.tag
+        switch  sender.tag {
+        case 1:
+            if(self.optionalVw == nil){
+                arrOfShowData = DatabaseClass.shared.fetchDataFromDatabse(entityName: "UserAccType", query: nil) as! [UserAccType]
+                self.openDwopDown( txtField: self.txtfield_AccNm, arr: arrOfShowData)
+            }else{
+                self.removeOptionalView()
+
+            }
+            break
+        case 5:
+            if(self.optionalVw == nil){
+              //  self.reradJson()
+                arrOfShowData = getJson(fileName: "countries")["countries"] as! [Any]
+                self.openDwopDown( txtField: self.txtField_Country, arr: arrOfShowData)
+                
+            }else{
+                self.removeOptionalView()
+            }
+           
+            break
+        case 6:
+            if(self.optionalVw == nil){
+                
+                self.removeOptionalView()
+                let namepredicate: NSPredicate = NSPredicate(format:"self.name == %@", self.txtField_Country.text! )
+                let arr = getCountry().filtered(using: namepredicate)
+                if(arr.count > 0){
+                    let dict = (arr[0] as? [String : String])
+                    let serchCourID = dict!["id"]
+                    let bPredicate: NSPredicate = NSPredicate(format:"self.country_id == %@", serchCourID! )
+                    arrOfShowData =  getStates().filtered(using: bPredicate)
+                    self.openDwopDown( txtField: self.txtField_State, arr: arrOfShowData)
+                }
+            }else{
+                self.removeOptionalView()
+
+            }
+            break
+        case 11 :
+            arrOfShowData = APP_Delegate.industries
+            self.openDwopDown( txtField: self.txtField_Industry, arr: arrOfShowData)
+        default:
+            print("Defalt")
+            break
+        }
+
+    }
+
+    //==========================
+    //MARK:- Open OptionalView
+    //==========================
+    func openDwopDown(txtField : UITextField , arr : [Any]) {
+        
+        if (optionalVw == nil){
+            self.optionalVw = OptionalView.instanceFromNib() as? OptionalView;
+            let sltTxtfldFrm = txtField.convert(txtField.bounds, from: self.view)
+            self.optionalVw?.setUpMethod(frame: CGRect(x:10, y: ((-sltTxtfldFrm.origin.y) + sltTxtfldFrm.size.height ), width: self.view.frame.size.width - 20, height: CGFloat(arr.count > 5 ? 150 : 38*arr.count)))
+            self.optionalVw?.delegate = self
+            self.view.addSubview( self.optionalVw!)
+            self.scroll_View.isScrollEnabled = false
+            self.optionalVw?.removeOptionVwCallback = {(isRemove : Bool) -> Void in
+                self.removeOptionalView()
+            }
+            
+            
+            // self.optionalVw = nil
+        }else{
+            DispatchQueue.main.async {
+                self.removeOptionalView()
+            }
+        }
+        
+    }
+    
+    func openDwopDownForConstactHeight(txtField : UITextField , arr : [Any]) {
+        
+        if (optionalVw == nil){
+            self.optionalVw = OptionalView.instanceFromNib() as? OptionalView;
+            let sltTxtfldFrm = txtField.convert(txtField.bounds, from: self.view)
+            self.optionalVw?.setUpMethod(frame: CGRect(x:10, y: ((-sltTxtfldFrm.origin.y) + sltTxtfldFrm.size.height ), width: self.view.frame.size.width - 20, height: 100))
+            self.optionalVw?.delegate = self
+            self.view.addSubview( self.optionalVw!)
+            self.scroll_View.isScrollEnabled = false
+            self.optionalVw?.removeOptionVwCallback = {(isRemove : Bool) -> Void in
+                self.removeOptionalView()
+            }
+            
+            
+            // self.optionalVw = nil
+        }else{
+            DispatchQueue.main.async {
+                self.removeOptionalView()
+            }
+        }
+        
+    }
+    
+    func removeOptionalView(){
+        if optionalVw != nil {
+            self.optionalVw?.removeFromSuperview()
+            self.optionalVw = nil
+            self.scroll_View.isScrollEnabled = true
+        }
+    }
+ 
+    //=====================================
+    //MARK:- OptionalView Delegate method
+    //=====================================
+    
+    func optionView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return arrOfShowData.count
+    }
+    
+    func optionView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        var cell = tableView.dequeueReusableCell(withIdentifier: cellReuseIdentifier)
+        if(cell == nil){
+            cell = UITableViewCell.init(style: .default, reuseIdentifier: cellReuseIdentifier)
+        }
+        
+        cell!.textLabel!.font = UIFont.systemFont(ofSize: 13.0)
+        cell?.backgroundColor = .clear
+        //cell?.textLabel?.textColor = UIColor.init(red: 0.0/255.0, green: 132.0/255.0, blue: 141.0/255.0, alpha: 1)
+        cell?.textLabel?.textColor = UIColor.darkGray
+
+        
+        switch self.sltDropDownTag {
+        case 1:
+              cell?.textLabel?.text = (arrOfShowData[indexPath.row] as! UserAccType).type?.capitalizingFirstLetter()
+            break
+        case 5:
+            cell?.textLabel?.text = ((arrOfShowData[indexPath.row] as? [String : Any])?["name"] as? String)?.capitalizingFirstLetter()
+            break
+            
+        case 6:
+            cell?.textLabel?.text = ((arrOfShowData[indexPath.row] as? [String : Any])?["name"] as? String)?.capitalizingFirstLetter()
+            break
+        case 11:
+            cell?.textLabel?.text = ((arrOfShowData[indexPath.row] as? [String : Any])?["name"] as? String)?.capitalizingFirstLetter()
+            break
+        default: break
+            
+        }
+        return cell!
+    }
+    
+    func optionView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        switch self.sltDropDownTag {
+        case 1:
+            self.txtfield_AccNm.text =  (self.arrOfShowData[indexPath.row] as? UserAccType)?.type
+                param.pymtType = (self.arrOfShowData[indexPath.row] as? UserAccType)?.accId
+               self.removeOptionalView()
+            break
+        case 5:
+            self.txtField_Country.text = (arrOfShowData[indexPath.row] as? [String : Any])?["name"] as? String
+            let countryID = (arrOfShowData[indexPath.row] as? [String : Any])?["id"] as? String
+              param.ctry = countryID
+            let idPredicate: NSPredicate = NSPredicate(format:"self.country_id == %@", countryID! )
+            let arrOfstate =  getStates().filtered(using: idPredicate)
+            self.txtField_State.text = (arrOfstate[0] as? [String : Any])?["name"] as? String
+            param.state = (arrOfstate[0] as? [String : Any])?["id"] as? String
+               self.removeOptionalView()
+            break
+        case 6:
+            self.txtField_State.text =  (arrOfShowData[indexPath.row] as? [String : Any])?["name"] as? String
+            param.state = (arrOfShowData[indexPath.row] as? [String : Any])?["id"] as? String
+           self.removeOptionalView()
+            break
+            
+            case 11:
+                 self.txtField_Industry.text =  (arrOfShowData[indexPath.row] as? [String : Any])?["name"] as? String
+                 param.industry = (arrOfShowData[indexPath.row] as? [String : Any])?["id"] as? String
+                self.removeOptionalView()
+             break
+            
+        default:
+            break
+        }
+    }
+    
+    func optionView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 38.0
+    }
+    
+    
+    
+    //=====================================
+    //MARK:- TxtField Delegate method
+    //=====================================
+    
+    func openDropDownWhenKeyBordappere(){
+       if self.sltTxtField.isEqual(txtField_Country) {
+        
+            self.removeOptionalView()
+            arrOfShowData = getJson(fileName: "countries")["countries"] as! [Any]
+            self.openDwopDown( txtField: self.txtField_Country, arr: arrOfShowData)
+            
+            
+        }else if self.sltTxtField.isEqual(txtField_State){
+       
+            self.removeOptionalView()
+            let namepredicate: NSPredicate = NSPredicate(format:"self.name == '%@'", self.txtField_Country.text! )
+            let arr = getCountry().filtered(using: namepredicate)
+            if(arr.count > 0){
+                let dict = (arr[0] as? [String : String])
+                let serchCourID = dict!["id"]
+                let bPredicate: NSPredicate = NSPredicate(format:"self.country_id == '%@'", serchCourID! )
+                arrOfShowData =  getStates().filtered(using: bPredicate)
+                self.openDwopDown( txtField: self.txtField_State, arr: arrOfShowData)
+            }
+        }else if self.sltTxtField.isEqual(txtField_Industry){
+            self.removeOptionalView()
+            arrOfShowData =  APP_Delegate.industries
+            self.openDwopDown( txtField: self.txtField_Industry, arr: arrOfShowData)
+        }
+        else{
+            self.removeOptionalView()
+        }
+    }
+    
+    func textFieldDidBeginEditing(_ textField: UITextField) {
+        self.sltTxtField = textField
+        self.sltDropDownTag = textField.tag
+        if(self.sltTxtField.isEqual(txtField_Country)){
+            txtField_Country.text = ""
+            param.ctry = nil
+        } else if self.sltTxtField.isEqual(txtField_State){
+            txtField_State.text = ""
+            param.state = nil
+        }
+    }
+    
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+
+        
+         let result = (textField.text as NSString?)?.replacingCharacters(in: range, with: string) ?? string
+        
+        
+        if (textField == txtField_MobNm) {
+                 
+                 if (string != "") && (textField.text?.count)! > 14 {
+                     return false
+                 }
+                 
+                 let aSet = NSCharacterSet(charactersIn:"0123456789").inverted
+                 let compSepByCharInSet = string.components(separatedBy: aSet)
+                 let numberFiltered = compSepByCharInSet.joined(separator: "")
+                 return string == numberFiltered
+             }
+        
+        
+        if (textField == latitute) || (textField == longitute){
+            let insensitiveCount = result.lowercased().filter{ $0 == Character(String(".").lowercased())}
+            if insensitiveCount.count > 1 {
+                return false
+            }
+            
+            
+            let aSet = NSCharacterSet(charactersIn:"0123456789.").inverted
+            let compSepByCharInSet = string.components(separatedBy: aSet)
+            let numberFiltered = compSepByCharInSet.joined(separator: "")
+            return string == numberFiltered
+            
+        }
+        
+        
+        
+        switch self.sltDropDownTag {
+        case 5:
+             let bPredicate: NSPredicate = NSPredicate(format: "self.name beginswith[c] %@", result)
+             arrOfShowData =  getCountry().filtered(using: bPredicate)
+             if(self.optionalVw == nil){
+                self.openDwopDownForConstactHeight( txtField: textField, arr: arrOfShowData)
+             }
+             DispatchQueue.main.async{
+                if(self.arrOfShowData.count > 0){
+                    self.optionalVw?.isHidden = false
+                    self.optionalVw?.table_View?.reloadData()
+                }else{
+                    self.optionalVw?.isHidden = true
+                }
+             }
+        break
+            
+        case 6 :
+            
+            let namepredicate: NSPredicate = NSPredicate(format:"self.name == %@", self.txtField_Country.text! )
+            let arr = getCountry().filtered(using: namepredicate)
+            if(arr.count > 0){
+                let dict = (arr[0] as? [String : String])
+                let serchCourID = dict!["id"]
+                let idPredicate: NSPredicate = NSPredicate(format:"self.country_id == %@", serchCourID! )
+                let arrOfstate =  getStates().filtered(using: idPredicate)
+                 let bPredicate: NSPredicate = NSPredicate(format: "self.name beginswith[c] %@", result)
+                arrOfShowData =  ((arrOfstate as NSArray).filtered(using: bPredicate))
+                if(self.optionalVw == nil){
+                    self.openDwopDownForConstactHeight( txtField: textField, arr: arrOfShowData)
+                }
+                DispatchQueue.main.async{
+                    if(self.arrOfShowData.count > 0){
+                        self.optionalVw?.isHidden = false
+                        self.optionalVw?.table_View?.reloadData()
+                    }else{
+                        self.optionalVw?.isHidden = true
+                        self.removeOptionalView()
+                    }
+                }
+                
+            }
+        break
+        case 11:
+            let bPredicate: NSPredicate = NSPredicate(format: "self.name beginswith[c] %@", result)
+            arrOfShowData =  (( APP_Delegate.industries as NSArray).filtered(using: bPredicate))
+            if(self.optionalVw == nil){
+                self.openDwopDown( txtField: textField, arr: arrOfShowData)
+            }
+            DispatchQueue.main.async{
+                if(self.arrOfShowData.count > 0){
+                    self.optionalVw?.isHidden = false
+                    self.optionalVw?.table_View?.reloadData()
+                }else{
+                    self.optionalVw?.isHidden = true
+                }
+            }
+            break
+            
+        default:
+            break
+        }
+        
+        
+     
+        
+        return true
+    }
+    
+  
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool {   
+        textField.resignFirstResponder()
+        return true
+    }
+    
+  
+    
+    //==============================
+    // MARK:- Save data in DataBase
+    //==============================
+    func saveNewCreatedClientInDataBase( data : AddClientDetails?) -> Void {
+        if  let obj = data{
+            let userJobs = DatabaseClass.shared.createEntity(entityName: "ClientList")
+            userJobs?.setValuesForKeys(obj.toDictionary!)
+            DatabaseClass.shared.saveEntity(callback: { _ in})
+        }
+    }
+    
+    
+    func getTempIdForNewClient(newId : Int) -> String {
+        
+        return "Client-\(String(describing: getUserDetails()?.usrId ?? ""))-\(getCurrentTimeStamp())"
+        
+//        let searchQuery = "cltId = 'Client-\(newId)'"
+//        let isExist = DatabaseClass.shared.fetchDataFromDatabse(entityName: "ClientList", query: searchQuery) as! [ClientList]
+//        if isExist.count == 0 {
+//            return "Client-\(newId)"
+//        }else{
+//            return getTempIdForNewClient(newId: newId + 1)
+//        }
+    }
+   
+    
+    func addClint(){
+      /*
+        compId -> company id
+        nm -> client name
+        pymtType -> payment type (accId)
+        gstNo -> GST Number
+        tinNo - >TIN number
+        industry -> Industry
+        note -> some text
+        
+        snm -> site name
+        adr -> address
+        city -> city
+        state -> state
+        ctry -> country
+        zip -> zipcode
+        
+        cnm -> contact name
+        email -> email
+        mob1 -> mobile no-1
+        mob2 -> mobile no- 2
+        fax -> fax number
+        twitter -> twitter id
+        skype -> skype id
+ */
+        
+        
+    
+        btnSave.isUserInteractionEnabled = true
+        let temp = getTempIdForNewClient(newId: 0)
+        param.tempId = temp
+        param.cltId = temp
+
+        param.nm  = trimString(string:  self.txtField_ClintNm.text!)
+        param.gstNo  = trimString(string:  self.txtField_GSTNo.text!)
+        param.tinNo = trimString(string:  self.txtField_TinNo.text!)
+        param.note = trimString(string:  self.txtField_Note.text!)
+        param.snm  = "self"
+        param.adr =  trimString(string: self.txtField_Addrs.text!)
+        param.city = trimString(string: self.txtField_City.text!)
+
+        param.cnm = "self"
+        param.email  = trimString(string: self.txtField_EmailId.text!)
+        param.mob1 = trimString(string: self.txtField_MobNm.text!)
+        param.jtId = nil
+        param.lat = trimString(string: self.latitute.text!)
+        param.lng = trimString(string: self.longitute.text!)
+
+        //Save in LOCAL DATABASE
+        let userJobs = DatabaseClass.shared.createEntity(entityName: "ClientList")
+        userJobs?.setValuesForKeys(param.toDictionary!)
+        DatabaseClass.shared.saveEntity(callback: {isSuccess in
+            if self.callbackForClientVC != nil {
+                self.callbackForClientVC!(true)
+            }
+            
+            
+            param.tempId = param.cltId
+            param.compId = getUserDetails()?.compId
+            param.zip  = trimString(string: self.txtField_Zip.text!)
+            param.def = "1"
+            
+            
+            showToast(message: AlertMessage.clientAdd) // Alert msgs
+            
+            //Save and send service
+            DatabaseClass.shared.saveOffline(service: Service.addClient, param: param)
+            self.navigationController?.popViewController(animated: true)
+        })
+}
+    
+    
+    //=====================================
+    // MARK:- Get Account Type Service
+    //=====================================
+    
+    func getAccounttype(){
+        /*
+         compId -> Company id
+         limit -> limit
+         index -> index value
+         search -> search value
+         dateTime -> date time
+         */
+        
+        
+        if !isHaveNetowork() {
+            return
+        }
+        
+        
+        let lastRequestTime : String? = UserDefaults.standard.value(forKey: Service.getAccType) as? String
+        
+        let param = Params()
+        param.compId = getUserDetails()?.compId
+        param.limit = "10"
+        param.index = "0"
+        param.search = ""
+        param.dateTime = lastRequestTime ?? ""
+    
+        serverCommunicator(url: Service.getAccType, param: param.toDictionary) { (response, success) in
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(AccountTypeName.self, from: response as! Data) {
+                    
+                    if decodedData.success == true{
+                        
+                        //Request time will be update when data comes otherwise time won't be update
+                        UserDefaults.standard.set(CurrentDateTime(), forKey: Service.getAccType)
+                        DispatchQueue.main.async{
+                            self.saveAccTypeInDB(data: decodedData.data )
+                        }
+                    }else{
+                        ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                }
+            }else{
+                //ShowError(message: "Please try again!", controller: windowController)
+            }
+        }
+    }
+    
+    
+    //==============================
+    // MARK:- Save data in DataBase
+    //==============================
+    func saveAccTypeInDB( data : [accountTypeDetails]) -> Void {
+        for jobs in data{
+            let query = "accId = '\(jobs.accId!)'"
+            let isExist = DatabaseClass.shared.fetchDataFromDatabse(entityName: "UserAccType", query: query) as! [UserAccType]
+            if isExist.count > 0 {
+                let existingJob = isExist[0]
+                existingJob.setValuesForKeys(jobs.toDictionary!)
+               // DatabaseClass.shared.saveEntity()
+            }else{
+                let userJobs = DatabaseClass.shared.createEntity(entityName: "UserAccType")
+                userJobs?.setValuesForKeys(jobs.toDictionary!)
+               // DatabaseClass.shared.saveEntity()
+            }
+        }
+        
+         DatabaseClass.shared.saveEntity(callback: { _ in })
+    }
+    
+    //========================================
+    //MARK:-  Stop Copy Paste of Numbers Filed
+    //========================================
+    
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if txtField_MobNm.isFirstResponder || txtField_Zip.isFirstResponder {
+            DispatchQueue.main.async(execute: {
+                (sender as? UIMenuController)?.setMenuVisible(false, animated: false)
+            })
+            return false
+        }
+        
+        return super.canPerformAction(action, withSender: sender)
+    }
+    
+
+    
+    //========================================
+    //MARK:-  Key Board notification method
+    //========================================
+    @objc func keyboardWillShow(notification: NSNotification) {
+        
+        if ((notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue) != nil {
+            let userInfo = notification.userInfo!
+            var keyboardFrame:CGRect = (userInfo[UIResponder.keyboardFrameBeginUserInfoKey] as! NSValue).cgRectValue
+            keyboardFrame = self.view.convert(keyboardFrame, from: nil)
+            
+            var visibleRect = self.view.frame;
+            visibleRect.size.height -= keyboardFrame.size.height;
+            
+            var frameFrmScrollView = self.sltTxtField.convert(self.sltTxtField.bounds, to:self.scroll_View)
+            frameFrmScrollView.origin.y += 150.0  // 150 DropDown Height
+            
+            var frameFrmView = self.sltTxtField.convert(self.sltTxtField.bounds, to:self.view)
+            frameFrmView.origin.y += (150.0 + self.sltTxtField.frame.size.height + 20)
+            
+            if(visibleRect.size.height <= frameFrmView.origin.y){
+                 scrollPoint = CGPoint(x: 0.0, y: ((frameFrmScrollView.origin.y + frameFrmScrollView.size.height + 20) - visibleRect.size.height))
+                self.scroll_View.setContentOffset(scrollPoint!, animated: true)
+                
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { // 0.3 Time Delay
+                self.openDropDownWhenKeyBordappere()
+                
+            }
+        }
+    }
+    
+    @objc func keyboardWillHide(notification: NSNotification) {
+        self.removeOptionalView()
+        
+        if ((notification.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? NSValue)?.cgRectValue) != nil {
+            let userInfo = notification.userInfo!
+            var keyboardFrame:CGRect = (userInfo[UIResponder.keyboardFrameBeginUserInfoKey] as! NSValue).cgRectValue
+            keyboardFrame = self.view.convert(keyboardFrame, from: nil)
+            
+            let frameFrmScrollView = self.sltTxtField.convert(self.sltTxtField.bounds, to:self.scroll_View)
+            if(self.sltTxtField == self.txtField_Note || self.sltTxtField == self.txtField_Industry || self.sltTxtField == self.txtField_TinNo || self.sltTxtField == self.txtField_GSTNo || self.sltTxtField == self.txtField_Zip ){
+                scrollPoint = CGPoint(x: 0.0, y: ( keyboardFrame.size.height + frameFrmScrollView.size.height))
+                
+                self.scroll_View.setContentOffset(scrollPoint!, animated: true)
+            }else{
+                self.scroll_View.setContentOffset( .zero, animated: true)
+
+            }
+        }
+    }
+}

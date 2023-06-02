@@ -1,0 +1,288 @@
+//
+//  Params.swift
+//  EyeOnTask
+//
+//  Created by Hemant Pandagre on 31/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import Foundation
+
+
+class ActivityParams : Codable {
+    var device: String?
+    var module: String?
+    var msg: String?
+    
+    
+    convenience init(module : String, message : String) {
+        self.init()
+        self.device = "5"
+        self.module = module
+        self.msg = message
+    }
+    
+}
+
+
+
+
+class Params : Codable {
+    
+    var email: String?
+    var pass: String?
+    var key: String?
+    var devType: String?
+    var device_Type : String?
+    var audId : String?
+    var username : String?
+    var apiurl: String?
+    
+    var location: String?
+    var remark: String?
+    var equId: String?
+
+    var devName: String?
+    var appVersion: String?
+    var osVersion: String?
+    //var status: String
+    
+    var devId: String?
+    var usrId: String?
+    var msg : String?
+    
+    var udId: String?
+    var limit: String?
+    var index: String?
+    var search: String?
+    var op: String?
+    var np : String?
+    var cc : String?
+    var apiRequestFrom: String?
+    
+    
+    var tempId:String?
+    var answer : [CustomDataRes]?
+    
+    var parentId: String?
+    var queId: String?
+     var ansId: String?
+    var compId: String?
+    var cltId: String?
+    var siteId: String?
+    var conId: String?
+    var quotId: String?
+    var jtId : [jtIdParam]?
+    //var jtId : [Any]?
+    var des: String?
+    var type: String?
+    var prty: String?
+    var status: String?
+    var athr: String?
+    var kpr: String?
+    var schdlStart: String?
+    var schdlFinish: String?
+    var inst: String?
+    var nm: String?
+    var lnm: String?
+    var cnm: String?
+    var snm: String?
+    var mob1: String?
+    var mob2: String?
+    var adr: String?
+    var city: String?
+    var state: String?
+    var ctry: String?
+    var zip: String?
+    var memIds: [String]?
+    var clientForFuture: String?
+    var siteForFuture: String?
+    var contactForFuture: String?
+    var pymtType: String?
+    var gstNo: String?
+    var tinNo: String?
+    var industry: String?
+    var note: String?
+    var fax: String?
+    var twitter: String?
+    var skype: String?
+    var def : String?
+    var isactive : String?
+    var jobId : String?
+    var dateTime : String?
+    var rating : String?
+    var tagData : [[String : String]]?
+    var updateDate : String?
+    var title : String?
+    var landmark : String?
+    var  term : String?
+    
+    var lat: String?
+    var lng: String?
+    var itemId: String?
+    var time: String?
+    var btryStatus: String?
+    
+    
+    var apiUrl : String?
+    var requestParam : String?
+    var response : String?
+    var version : String?
+    var frmId : String?
+    var invId: String?
+    
+    var activeRecord: String?
+    var showInvoice: String?
+    var complNote: String?
+    //Invoice params
+     var discount: String?
+     var total: String?
+     var paid: String?
+     var pono: String?
+     var invDate: String?
+     var dueDate: String?
+     var newItem: [newItemData]?
+     var itemData: [itemData]?
+     var groupByData: [groupData]?
+     var changeState: String?
+     var cur: String?
+     var pro: String?
+     var invType: String?
+     var isItemOrTitle: String?
+     var isShowInList: String?
+     var inv_client_address: String?
+     var hsncode : String?
+     var pno : String?
+     var unit : String?
+     var taxamnt : String?
+     var shipto : String?
+     var isMobile : Int?
+    
+    var amt: String?
+    var ref: String?
+    var paytype: String?
+    var paydate: String?
+    
+    var message: String?
+    var subject: String?
+    var to: String?
+    var bcc: String?
+    var from: String?
+    var fromnm: String?
+    
+    
+    // for check in and check out service
+     var checkType: String?
+     var checkId: String?
+   
+    //"dtf"  "dtt"
+    
+    var dtf : String?
+    var dtt : String?
+    var assignByUser : String?
+    var forMobile :  String?
+    var iqmmId: [String]?
+    var barCode : String?
+    var latLongData : [LocationObject]?
+    var jaId : String?  //document id
+
+    var module : String?
+    var device : String?
+
+  }
+
+class newItemData: Codable {
+     var itemId : String?
+     var inm : String?
+     var ides : String?
+     var qty : String?
+     var rate : String?
+     var discount : String?
+     var itype : String?
+     var tax : [texDetail]?
+     var isItemOrTitle: String?
+     var amount: String?
+     var hsncode : String?
+     var pno : String?
+     var unit : String?
+     var taxamnt : String?
+     var jtId : String?
+     var supplierCost : String?
+}
+
+
+
+class itemData: Codable {
+    var itemId : String?
+    var inm : String?
+    var ides : String?
+    var desc : String?
+    var des : String?
+    var jobId : String?
+    var qty : String?
+    var rate : String?
+    var discount : String?
+    var type : String?
+    var isGroup : String?
+    var tax : [taxData]?
+    var hsncode : String?
+    var pno : String?
+    var unit : String?
+    var taxamnt : String?
+    var supplierCost : String?
+    var jtId : String?
+}
+
+class taxData: Codable {
+    var taxId : String?
+    var rate : String?
+    var txRate : String?
+    var ijmmId : String?
+    var tagId : String?
+    var tnm : String?
+    
+}
+
+class TagArr: Codable {
+    var tagId : String?
+    var tnm : String?
+    init(tagId: String,tnm: String){
+        self.tagId = tagId
+        self.tnm = tnm
+    }
+}
+
+class groupData: Codable {
+    var gnm : String?
+    var rate : String?
+    var qty : String?
+    var discount : String?
+}
+
+
+    class jtIdParam: Codable {
+        var jtId: String?
+        var title: String?
+        var labour: String?
+    }
+
+
+class LocationObject : Codable {
+    //{"btryStatus":"44","datetime":"1577466240","lat":"22.68455932000001","lng":"75.82566356000518"}
+    var btryStatus : String?
+    var dateTime : String?
+    var lat : Double?
+    var lng : Double?
+    
+    
+    init(battery:String,dateTime : String, lat : Double, lng : Double ) {
+        self.btryStatus = battery
+        self.dateTime = dateTime
+        self.lat = lat
+        self.lng = lng
+    }
+}
+
+
+
+

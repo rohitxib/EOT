@@ -1,0 +1,277 @@
+//
+//  FeedbackVC.swift
+//  EyeOnTask
+//
+//  Created by Apple on 11/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+
+class FeedbackVC: UIViewController, YPSignatureDelegate {
+   
+    
+
+    
+    @IBOutlet weak var btnSubmit: UIButton!
+    @IBOutlet weak var btnClear: UIButton!
+    @IBOutlet weak var lblSignature: UILabel!
+    @IBOutlet weak var lblDescription: UILabel!
+    @IBOutlet weak var lblDes: UILabel!
+    @IBOutlet weak var lblSendYourFeedback: UILabel!
+    @IBOutlet weak var txtDescription: UITextView!
+    
+    
+    @IBOutlet var signautrePadView: YPDrawSignatureView!
+    @IBOutlet var smilyImage: UIImageView!
+    @IBOutlet var muteImage: UIImageView!
+    @IBOutlet var sadImage: UIImageView!
+    @IBOutlet var smileBtn: UIButton!
+    @IBOutlet var muteBtn: UIButton!
+    @IBOutlet var sadBtn: UIButton!
+    
+    
+  
+    @IBOutlet weak var descriptionHeight: NSLayoutConstraint!
+    @IBOutlet weak var signaturePadHeight: NSLayoutConstraint!
+    
+   
+    @IBOutlet weak var submitBtn: NSLayoutConstraint!
+    
+    
+ 
+    var objOfUserJobListInDetail : UserJobList?
+    var moodSelection = Int()
+    
+    var pressed = false
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        moodSelection = 3
+        signautrePadView.delegate = self
+        self.signautrePadView.layer.zPosition = 1
+        
+        setLocalization()
+        
+        
+        let isItem = isPermitForShow(permission: permissions.isItemVisible)
+        if !isItem {
+            let swipeLeft = UISwipeGestureRecognizer(target: self, action: #selector(swiped))
+             swipeLeft.direction = UISwipeGestureRecognizer.Direction.right
+             self.view.addGestureRecognizer(swipeLeft)
+        }
+        
+      
+        
+        ActivityLog(module:Modules.job.rawValue , message: ActivityMessages.jobFeedback)
+    }
+    
+    func setLocalization() -> Void {
+        self.navigationItem.title = LanguageKey.title_feedback
+        lblSendYourFeedback.text = LanguageKey.feed_head
+        lblDes.text = LanguageKey.feed_sub_head
+        lblDescription.text = LanguageKey.description
+        lblSignature.text = LanguageKey.sign
+        btnClear.setTitle(LanguageKey.clear , for: .normal)
+        btnSubmit.setTitle(LanguageKey.submit_btn , for: .normal)
+       
+    }
+    
+    @objc func swiped(_ gesture: UISwipeGestureRecognizer) {
+         if gesture.direction == .right {
+             if (self.tabBarController?.selectedIndex)! > 0 {
+                 self.tabBarController?.selectedIndex -= 1
+             }
+         }
+     }
+
+    override func viewWillAppear(_ animated: Bool) {
+       // self.parent?.title = "Feedback"
+        
+        self.tabBarController?.navigationItem.title = LanguageKey.title_feedback
+        
+        if let button = self.parent?.navigationItem.rightBarButtonItem {
+            button.isEnabled = false
+            button.tintColor = UIColor.clear
+            
+        }
+        resetView()
+        
+        if UIScreen.main.sizeType == .iPhone5 {
+           self.descriptionHeight.constant = 70
+           self.signaturePadHeight.constant = 150
+           self.submitBtn.constant = 25
+
+        }
+        
+//        if UIScreen.main.sizeType == .iPhoneX {
+//            self.descriptionHeight.constant = 135
+//            self.signaturePadHeight.constant = 250
+//        }
+        
+        if UIDevice.current.hasNotch {
+           self.descriptionHeight.constant = 135
+           self.signaturePadHeight.constant = 250
+        }
+        
+       
+    }
+    
+   
+    
+    //=====================================
+    // MARK: Feedback Button Functionality
+    //=====================================
+    
+
+    @IBAction func feedbackBtn(_ sender: UIButton) {
+        moodSelection = sender.tag
+        feedbackEmoji(moodSelection: moodSelection )
+    }
+    
+    func feedbackEmoji(moodSelection : Int) -> Void {
+        switch moodSelection {
+        case 1:
+            self.sadImage.image = UIImage(named: "sad_face_2.png")
+            self.smilyImage.image = UIImage(named: "smily_face.png")
+            self.muteImage.image = UIImage(named: "mute_face.png")
+            break
+            
+        case 2:
+            self.muteImage.image = UIImage(named: "mute_face_2.png")
+            self.smilyImage.image = UIImage(named: "smily_face.png")
+            self.sadImage.image = UIImage(named: "sad_face.png")
+            break
+        default:
+            self.smilyImage.image = UIImage(named: "smily_face_2.png")
+            self.muteImage.image = UIImage(named: "mute_face.png")
+            self.sadImage.image = UIImage(named: "sad_face.png")
+        }
+    }
+    
+
+    //==================================
+    // MARK: Signaure_Pad Functionality
+    //===================================
+    
+    @IBAction func submitBtn(_ sender: Any) {
+        
+        let feedbackString = trimString(string: txtDescription.text!)
+       // if signautrePadView.doesContainSignature || feedbackString.count > 0 {
+            self.feedbackService(feebBackTxt: feedbackString)
+       // }
+        
+    }
+    
+    @IBAction func clrBtn(_ sender: Any) {
+        self.signautrePadView.clear()
+    }
+
+    
+    func feedbackService(feebBackTxt : String) -> Void {
+        
+        /*
+         usrId -> User id
+         jobId -> Job id
+         des -> Description
+         rating -> 1 - Poor , 2 - Happy , 3 - Very happy
+         sign -> File object
+         */
+        
+//        var image = UIImage()
+        
+        showLoader()
+        
+        var image : UIImage? = nil
+        
+        if let signatureImage = self.signautrePadView.getSignature(scale: 1) {
+           
+            image = signatureImage
+            
+            // Since the Signature is now saved to the Photo Roll, the View can be cleared anyway.
+            self.signautrePadView.clear()
+        }
+        
+        let param = Params()
+        param.usrId = getUserDetails()?.usrId
+        param.jobId = objOfUserJobListInDetail?.jobId
+        param.des = feebBackTxt
+        param.rating = String(moodSelection)
+        
+        txtDescription.resignFirstResponder()
+        self.txtDescription.text = ""
+        self.signautrePadView.clear()
+        
+        serverCommunicatorUplaodImage(url: Service.addFeedback, param: param.toDictionary, image: image, imagePath: "sign", imageName: "image") { (response, success) in
+            
+            killLoader()
+            
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(FeedBackRes.self, from: response as! Data) {
+                    if decodedData.success == true{
+                        
+                        DispatchQueue.main.async{
+                            if( decodedData.data.count > 0){
+                                let obj = decodedData.data[0]
+                                if (obj.jobid != nil && obj.jobid != ""){ //Only For Remove job when Admin Unassign job for FW
+                                    var dict = [String : Any]()
+                                    dict["data"] = [ "status_code" : obj.status_code! ,
+                                                     "jobid" : obj.jobid!]
+                                    NotiyCenterClass.fireJobRemoveNotifier(dict: (dict))
+                                    self.tabBarController?.navigationController?.popToRootViewController(animated: true)
+                                    
+                                }
+                            }else{
+                                 self.showToast(message:getServerMsgFromLanguageJson(key: decodedData.message!)!)
+                                
+                            }
+                        }
+     
+                    }else{
+                        if let code =  decodedData.statusCode{
+                            if(code == "401"){
+                                ShowAlert(title: getServerMsgFromLanguageJson(key: decodedData.message!), message:"" , controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                    if (Ok){
+                                        DispatchQueue.main.async {
+                                            (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                        }
+                                    }
+                                })
+                            }
+                        }else{
+                            ShowError(message: getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {_,_ in})
+                }
+            }else{
+                ShowError(message: errorString, controller: windowController)
+            }
+        }
+    }
+    
+    func resetView() -> Void {
+        txtDescription.resignFirstResponder()
+        self.txtDescription.text = ""
+        self.feedbackEmoji(moodSelection : 3)
+        self.signautrePadView.clear()
+    }
+    
+    //======================================================
+    // MARK: Signature delegate methods
+    //======================================================
+    
+    
+    func didStart() {
+        print("Start Signature")
+    }
+    
+    func didFinish() {
+         print("Finish Signature")
+    }
+
+    
+}
+

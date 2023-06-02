@@ -1,0 +1,682 @@
+//
+//  Database.swift
+//  EyeOnTask
+//
+//  Created by Hemant Pandagre on 30/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import Foundation
+import CoreData
+
+protocol DataSyncDelegate : class {
+    func dataSyncComplete(isJobList : Bool)
+}
+
+
+var delegate: DataSyncDelegate?
+
+class DatabaseClass {
+    static let shared = DatabaseClass()
+    weak var delegate: DataSyncDelegate?
+    var bgTask : BackgroundTaskManager?
+    var attempedCount = Int()
+     var callbackForJobVC: ((Bool) -> Void)?
+     var callbackForClientVC: ((Bool) -> Void)?
+     var callbackForContactVC: ((Bool) -> Void)?
+     var callbackForSiteVC: ((Bool) -> Void)?
+
+    
+  //==========================================================================================
+    //Note:- When any data ADD and UPDATE in database after that call DatabaseClass.shared.saveEntity() method otherwise database will not update.
+    //===========================================================================================
+    let context = APP_Delegate.persistentContainer.viewContext //Create context
+    var isSync = Bool()
+    var isAdded = Bool()
+    var isProgressBarShow = Bool()
+    var TotalSyncCount = Int()
+    
+    let progressView = UIProgressView()
+    let label = UILabel()
+    var progressBackground = UIView()
+    
+    
+    //===========================
+    //MARK:- Initialize Database
+    //===========================
+    private init() {
+        print("initialize Database")
+        //InitializeProgressBar()
+    }
+ 
+
+    
+    //=====================
+    //MARK:- Create Entity
+    //=====================
+    func createEntity(entityName : String) -> NSManagedObject? {
+        let entity = NSEntityDescription.entity(forEntityName: entityName, in: context)
+        let newUser = NSManagedObject(entity: entity!, insertInto: context)
+        //print("Created managed object data \(entityName)")
+        return newUser
+    }
+    
+    
+    //=====================
+    //MARK:- Save Entity
+    //=====================
+    func saveEntity(callback:(Bool)  -> Void) -> Void {
+        //print("process in saving....")
+        //let context = APP_Delegate.persistentContainer.viewContext
+        if context.hasChanges{
+            context.performAndWait({
+                do {
+                    try context.save()
+                    //print("Saved data in database.")
+                    callback(true)
+                } catch {
+                    // Replace this implementation with code to handle the error appropriately.
+                    // fatalError() causes the application to generate a crash log and terminate. You should not use this function in a shipping application, although it may be useful during development.
+                    //                let nserror = error as NSError
+                    //                fatalError("Unresolved error \(nserror), \(nserror.userInfo)")
+                    
+//                    if DebugModePrint(){
+//                        print("error in job saving")
+//                    }
+                    callback(true)
+                    print("error in saving")
+                }
+            })
+        }else{
+            callback(true)
+        }
+    }
+    
+    //=====================
+    //MARK:- Delete Entity
+    //=====================
+    func deleteEntity(object : NSManagedObject, callback:@escaping(Bool)  -> Void) {
+        context.delete(object)
+      //  self.saveEntity()
+        //if callback != nil {
+             callback(true)
+       // }
+    }
+    
+    
+    //=====================
+    //MARK:- FETCH Entity
+    //=====================
+    func fetchDataFromDatabse(entityName : String, query : String?) -> Any? {
+        let request = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
+        if let formate = query {
+            request.predicate = NSPredicate(format: formate)
+        }
+        request.returnsObjectsAsFaults = false
+        
+        do{
+            let result = try context.fetch(request)
+            //print("success")
+            return result
+        }catch {
+            //print("Failed")
+            return nil
+        }
+    }
+    
+
+    
+    //=========================
+    //MARK:- save OFFLINE LIST
+    //=========================
+    func saveOffline(service : String, param : Params) -> Void {
+        let userJobs = self.createEntity(entityName: "OfflineList") as! OfflineList
+        userJobs.apis = service
+        userJobs.parametres = param.toString
+        userJobs.time = Date()
+       
+        self.saveEntity(callback: {isSuccess in
+            self.syncDatabase()
+        })
+    }
+    
+    
+    func saveActivityOffline(service : String, param : ActivityParams) -> Void {
+        let userJobs = self.createEntity(entityName: "OfflineList") as! OfflineList
+        userJobs.apis = service
+        userJobs.parametres = param.toString
+        userJobs.time = Date()
+       
+        self.saveEntity(callback: {isSuccess in
+            self.syncDatabase()
+        })
+    }
+    
+    
+    func deleteEntityWithName(EntityName : String,  callback :@escaping (Bool) -> Void) {
+        let deleteFetch = NSFetchRequest<NSFetchRequestResult>(entityName: EntityName)
+        let deleteRequest = NSBatchDeleteRequest(fetchRequest: deleteFetch)
+        
+        do {
+            try context.execute(deleteRequest)
+            try context.save()
+            //print("delete entity \(EntityName)")
+            
+        } catch {
+            print ("There was an error")
+        }
+        
+       // if  callback != nil {
+            callback(true)
+       // }
+    }
+    
+    
+    
+    func deleteAllRecords( callback : (Bool) -> Void) {
+        for entity in Entities.allCases {
+            
+            if entity != Entities.OfflineList {
+                let deleteFetch = NSFetchRequest<NSFetchRequestResult>(entityName: entity.rawValue)
+                let deleteRequest = NSBatchDeleteRequest(fetchRequest: deleteFetch)
+                
+                do {
+                   try context.execute(deleteRequest)
+                    saveEntity { (isSave) in
+                       // print("Deleted entity = \(entity)")
+                    }
+                     
+                } catch {
+                    print ("There was an error")
+                }
+            }
+        }
+        
+        callback(true)
+//        do {
+//            try context.save()
+//            print("All entity deleted")
+//            callback(true)
+//        } catch {
+//            callback(true)
+//            print ("All entity deleted There was an error")
+//        }
+    }
+    
+    //=====================
+    //MARK:- DataBase SYNC
+    //=====================
+    func syncDatabase() -> Void {
+        if isHaveNetowork() {
+            if self.isSync {
+                //print("Database already syncing...")
+            }else{
+               // print("Start Syncing...")
+                self.isSync = true
+                
+                //Use the BackgroundTaskManager to manage all the background Task
+                if bgTask == nil{
+                    bgTask =  BackgroundTaskManager.shared()
+                    bgTask?.beginNewBackgroundTask()
+                }
+                self.UploadRequests()
+            }
+        }else{
+            self.isSync = false
+            bgTask = nil
+           // print("Syncing Failed Because of network error...")
+        }
+    }
+    
+    
+    //=====================
+    //MARK:- UploadRequests
+    //=====================
+    
+    func UploadRequests() -> Void {
+        var arryData = self.fetchDataFromDatabse(entityName: "OfflineList", query: nil) as! [OfflineList]
+       // print("arry data count ===================== \(arryData.count)")
+        
+        if arryData.count > 0 {
+           
+            // Sort requests in assending order for upload request according to time (First in First out)
+            arryData = arryData.sorted(by: {
+                $0.time?.compare($1.time!) == .orderedAscending
+            })
+            
+            let data = arryData [0]
+           // print(data.parametres)
+            
+            serverCommunicator(url: data.apis!, param: data.parametres?.toDictionary ) { (response, success) in
+                
+                //self.context.delete(data)
+                if success {
+
+                    guard let data1 = response  else { return }
+                    
+                    
+                    
+                    
+                    do {
+                        
+                        let res = try JSONSerialization.jsonObject(with: (data1 as? Data)!)
+                       // if res = nil{
+                            
+                            if ((res as! [String : Any])["success"] as! Bool){
+                                
+                                //Delete data here
+                                self.context.delete(data)
+                                DatabaseClass.shared.saveEntity(callback: { _ in})
+                                
+                                 if let dict = ((res as! [String : Any])["data"] as? [String : Any]){
+                            
+                                    if(dict["tempId"] != nil && dict["tempId"] as! String != ""){
+                                        let temp = (dict["tempId"] as! String).components(separatedBy: "-")
+                                        
+                                        let tempid = temp[0]
+                                        
+                                        if tempid == "Job" {
+                                            self.replaceJobID(dict: dict)
+                                            
+                                        }else if(tempid == "Contact"){
+                                            self.replaceContactID(dict: dict)
+                                            
+                                        }else if(tempid == "Site"){
+                                            self.replaceSiteID(dict: dict)
+                                            
+                                        }else if(tempid == "Client"){
+                                            self.replaceClientID(dict: dict)
+                                        }
+                                    }
+                                }else{
+                                    if let arr = ((res as! [String : Any])["data"] as? [[String : Any]]){
+                                        if(arr.count > 0){
+                                          
+                                            if(arr[0]["jobid"] != nil){
+                                                var dict = [String : Any]()
+                                                dict["data"] = [ "status_code" : arr[0]["status_code"]! ,
+                                                                 "jobid" : arr[0]["jobid"]!]
+                                                NotiyCenterClass.fireJobRemoveNotifier(dict: (dict))
+                                                
+                                              let arrOfVC = (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).viewControllers
+                                            
+                                                for vc in arrOfVC{
+                                                    if(vc is JobVC){
+                                                        (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popToViewController(vc, animated: true)
+                                                    }
+                                                }
+                                            
+                                                //self.tabBarController?.navigationController?.popToRootViewController(animated: true)
+                                            }
+                                        }
+                                    }
+
+                                }
+                            }else{
+                                //check error attempt and save in database
+                                
+                                if ((res as! [String : Any])["statusCode"] != nil && (res as! [String : Any])["statusCode"] as! String == "2"){
+                                    //Delete data here
+                                    self.context.delete(data)
+                                    DatabaseClass.shared.saveEntity(callback: {isSuccess in
+                                        self.UploadRequests()
+                                    })
+                                    return
+                                }else  if  (res as! [String : Any])["statusCode"] != nil && ((res as! [String : Any])["statusCode"] as! String == "401"){
+                                        self.isSync = false
+                                    ShowAlert(title:getServerMsgFromLanguageJson(key:((res as! [String : Any])["message"] as! String)) , message:"" , controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                            if (Ok){
+                                                DispatchQueue.main.async {
+                                                    (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                                }
+                                            }
+                                        })
+                                }else{
+                                     self.saveError(data: data, response: response)
+                                }
+                                return
+                            }
+                       // }
+                    } catch {
+                        //check error attempt and save in database
+                        self.saveError(data: data, response: response)
+                        return
+                    }
+
+                //Re-call this method for check if pending requests  in Offline Table
+                self.UploadRequests()
+                
+                }else{
+                    self.isSync = false
+                    //check error attempt and save in database
+                    if errorString == AlertMessage.formatProblem {
+                          self.saveError(data: data, response: response)
+                    }
+                }
+            }
+        }else{
+            isSync = false
+            self.uploadErrorsOnServer()
+           // print("Sync Completed...")
+        }
+    }
+    
+    
+    func saveError(data: OfflineList, response : Any?) -> Void {
+        self.attempedCount =  self.attempedCount + 1
+        
+        if self.attempedCount == 3 {
+             attempedCount = 0
+            
+            var responseData = ""
+            
+            if let data = response {
+                responseData = String(data: data as! Data, encoding: .utf8)!
+            }else{
+                responseData = errorString
+            }
+            
+            self.saveInErrorTable(service: data.apis!, params: data.parametres!, response: responseData , time: data.time!)
+            //Delete data here
+            self.context.delete(data)
+            DatabaseClass.shared.saveEntity(callback: {isSuccess in
+                self.UploadRequests()
+            })
+        }else{
+            //Re-call this method for check if pending requests in Offline Table
+            self.UploadRequests()
+            // print("Sync Failed...")
+        }
+        
+       
+    }
+    
+    
+    func uploadErrorsOnServer() -> Void {
+        var errorArry = self.fetchDataFromDatabse(entityName:Entities.ErrorsList.rawValue, query: nil) as! [ErrorsList]
+        
+        if errorArry.count > 0{
+        
+            // Sort requests in assending order for upload request according to time (First in First out)
+            errorArry = errorArry.sorted(by: {
+                $0.time?.compare($1.time!) == .orderedAscending
+            })
+            
+            let data = errorArry [0]
+            let param = Params()
+            param.apiUrl = data.apiUrl
+            param.requestParam = data.requestParam
+            param.response = data.response
+            param.version = data.version
+            
+            
+            serverCommunicator(url: Service.errorUpload, param: param.toDictionary, callBack: { (response, success) in
+                
+                if (success){
+                    let decoder = JSONDecoder()
+                    if let decodedData = try? decoder.decode(ErrorServiceResponse.self, from: response as! Data) {
+                        if decodedData.success! {
+                            self.context.delete(data)
+                            DatabaseClass.shared.saveEntity(callback: {isSuccess in
+                                //Re-call this method for check if pending requests in Error Table
+                                self.uploadErrorsOnServer()
+                            })
+                        }
+                    }
+                }else{
+                    
+                }
+            })
+        }
+    }
+    
+    
+    
+    //===========================
+    //MARK:- Replace Job methods
+    //===========================
+    func replaceJobID( dict :[String : Any]) -> Void {
+        
+        //Replace Contact id in OFFLINE Entity
+        let searchQuery1 = String.init(format: "parametres contains[c] '\"jobId\":\"%@\'", ((dict["tempId"] as! String)))
+        let isTempConArry = DatabaseClass.shared.fetchDataFromDatabse(entityName: "OfflineList", query: searchQuery1) as! [OfflineList]
+        if isTempConArry.count > 0 {
+            
+            for param in isTempConArry {
+                var conDict = param.parametres?.toDictionary
+                conDict!["jobId"] = dict["jobId"]
+                
+                param.parametres = conDict?.toString
+               // DatabaseClass.shared.saveEntity()
+            }
+        }
+        
+        
+        //Replace Contact id in ClientContactList Entity
+        let searchQuery = "jobId = '\((dict["tempId"] as! String))'"
+        let isExist = DatabaseClass.shared.fetchDataFromDatabse(entityName: "UserJobList", query: searchQuery) as! [UserJobList]
+        if isExist.count > 0 {
+            let existingJob = isExist[0]
+            
+            existingJob.jobId = (dict["jobId"] as! NSNumber).stringValue
+            existingJob.label = dict["label"] as? String
+            
+            if let finishTime = existingJob.schdlFinish {
+                existingJob.schdlFinish = finishTime.description
+            }
+            
+            if let startTime = existingJob.schdlStart {
+                existingJob.schdlStart = startTime.description
+            }
+            
+            
+         //   existingJob.schdlFinish = (dict["schdlFinish"] as! NSNumber).stringValue
+         //   existingJob.schdlStart = (dict["schdlStart"] as! NSNumber).stringValue
+            existingJob.lat = (dict["lat"] as! NSNumber).stringValue
+            existingJob.lng = (dict["lng"] as! NSNumber).stringValue
+            existingJob.snm = (dict["snm"] as! String)
+            existingJob.cnm = (dict["cnm"] as! String)
+            existingJob.skype = (dict["skype"] as! String)
+            existingJob.twitter = (dict["twitter"] as! String)
+            existingJob.kpr = (dict["kpr"] as! String)
+
+           // DatabaseClass.shared.saveEntity()
+            
+            //Create listner  for new job
+            let model = ChatManager.shared.chatModels.filter { (model) -> Bool in
+                if model.jobId == existingJob.jobId{
+                    return true
+                }
+                return false
+            }
+            
+            if model.count == 0 {
+                let model = ChatModel(from: existingJob)
+                ChatManager.shared.chatModels.append(model)
+            }
+        }
+        
+        self.saveEntity(callback: {isSuccess in
+            if self.callbackForJobVC != nil {
+                self.callbackForJobVC!(true)
+            }
+        })
+        
+        
+    }
+    
+    
+    //===============================
+    //MARK:- Replace Contact methods
+    //===============================
+    func replaceContactID( dict :[String : Any]) -> Void {
+        
+        //Replace Contact id in OFFLINE Entity
+        let searchQuery1 = String.init(format: "parametres contains[c] '\"conId\":\"%@\'", ((dict["tempId"] as! String)))
+        let isTempConArry = DatabaseClass.shared.fetchDataFromDatabse(entityName: "OfflineList", query: searchQuery1) as! [OfflineList]
+        if isTempConArry.count > 0 {
+            
+            for param in isTempConArry {
+                var conDict = param.parametres?.toDictionary
+                conDict!["conId"] = dict["conId"]
+                param.parametres = conDict?.toString
+               // DatabaseClass.shared.saveEntity()
+            }
+        }
+        
+        
+        //Replace Contact id in ClientContactList Entity
+        let searchQuery = "conId = '\((dict["tempId"] as! String))'"
+        let isExist = DatabaseClass.shared.fetchDataFromDatabse(entityName: "ClientContactList", query: searchQuery) as! [ClientContactList]
+        if isExist.count > 0 {
+            let existingJob = isExist[0]
+            existingJob.conId = dict["conId"] as? String
+           // DatabaseClass.shared.saveEntity()
+        }
+        
+        //delegate?.dataSyncComplete(isJobList: true)
+        
+        self.saveEntity(callback: {isSuccess in
+            if self.callbackForContactVC != nil {
+                self.callbackForContactVC!(true)
+            }
+        })
+
+    }
+    
+    
+    //============================
+    //MARK:- Replace Site methods
+    //============================
+    func replaceSiteID( dict :[String : Any]) -> Void {
+        
+        
+        //Replace Site id in OFFLINE Entity
+        let searchQuery1 = String.init(format: "parametres contains[c] '\"siteId\":\"%@\'", ((dict["tempId"] as! String)))
+        let isTempConArry = DatabaseClass.shared.fetchDataFromDatabse(entityName: "OfflineList", query: searchQuery1) as! [OfflineList]
+        if isTempConArry.count > 0 {
+            
+            for param in isTempConArry {
+                var conDict = param.parametres?.toDictionary
+                conDict!["siteId"] = dict["siteId"]
+                param.parametres = conDict?.toString
+               // DatabaseClass.shared.saveEntity()
+            }
+        }
+        
+        
+        //Replace Contact id in ClientContactList Entity
+        let searchQuery = "siteId = '\((dict["tempId"] as! String))'"
+        let isExist = DatabaseClass.shared.fetchDataFromDatabse(entityName: "ClientSitList", query: searchQuery) as! [ClientSitList]
+        if isExist.count > 0 {
+            let existingJob = isExist[0]
+            existingJob.siteId = dict["siteId"] as? String
+           // DatabaseClass.shared.saveEntity()
+        }
+        
+       // delegate?.dataSyncComplete(isJobList: true)
+        
+        self.saveEntity(callback: {isSuccess in
+            if self.callbackForSiteVC != nil {
+                self.callbackForSiteVC!(true)
+            }
+        })
+
+    }
+    
+    
+    //============================
+    //MARK:- Replace Client methods
+    //============================
+    func replaceClientID( dict :[String : Any]) -> Void {
+        
+        //Replace Site id in OFFLINE Entity
+        let searchQuery1 = String.init(format: "parametres contains[c] '\"cltId\":\"%@\'", ((dict["tempId"] as! String)))
+        let isTempConArry = DatabaseClass.shared.fetchDataFromDatabse(entityName: "OfflineList", query: searchQuery1) as! [OfflineList]
+        if isTempConArry.count > 0 {
+            
+            for param in isTempConArry {
+                var conDict = param.parametres?.toDictionary
+                conDict!["cltId"] = dict["cltId"]
+                param.parametres = conDict?.toString
+                //DatabaseClass.shared.saveEntity()
+            }
+        }
+        
+        
+        //Replace Contact id in ClientContactList Entity
+        let searchQuery = "cltId = '\((dict["tempId"] as! String))'"
+        let isExist = DatabaseClass.shared.fetchDataFromDatabse(entityName: "ClientList", query: searchQuery) as! [ClientList]
+        if isExist.count > 0 {
+            let existingJob = isExist[0]
+            existingJob.cltId = dict["cltId"] as? String
+            //DatabaseClass.shared.saveEntity()
+        }
+        
+       // delegate?.dataSyncComplete(isJobList: true)
+        self.saveEntity(callback: {isSuccess in
+            if self.callbackForClientVC != nil {
+                self.callbackForClientVC!(true)
+            }
+        })
+        
+    }
+    
+    
+    //========================
+    //MARK:- Sync Progressbar
+    //========================
+    
+        func InitializeProgressBar() -> Void {
+            let screenSize = UIScreen.main.bounds
+           
+            if screenSize.height > 800 {
+                progressBackground.frame = CGRect(x: 0, y: 34, width: screenSize.width, height: 10)
+            }else{
+                progressBackground.frame = CGRect(x: 0, y: 0, width: screenSize.width, height: 10)
+            }
+            
+            progressView.frame = CGRect(x: 0, y: 0, width: screenSize.width, height: 10)
+            progressView.trackTintColor = .white
+            progressView.progressTintColor = .red
+    
+            label.frame =  CGRect(x: (screenSize.width/2) - 90, y: 5, width: 180 , height: 15)
+            label.textColor = .white
+            label.font = UIFont.boldSystemFont(ofSize: 12.0)
+            label.backgroundColor = .clear
+            label.textAlignment = .center
+            label.text = "\(LanguageKey.sync_alert) - (25%)"
+    
+            progressBackground.addSubview(progressView)
+            progressBackground.addSubview(label)
+            UIApplication.shared.keyWindow?.addSubview(progressBackground)
+            progressBackground.isHidden = true
+        }
+    
+    
+    //===========================================
+    //MARK:- Sync Error Save in ErrorsList table
+    //===========================================
+    func saveInErrorTable(service:String, params:String, response:String, time : Date) -> Void {
+        
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as! String
+        let deviceName = UIDevice.modelName
+        let iOSVersion = UIDevice.current.systemVersion
+        
+        
+        // If increase any coloum in 'ErrorsList' table so add that key in params during the sending response in function of 'uploadErrorsOnServer()'
+        let error = self.createEntity(entityName: Entities.ErrorsList.rawValue) as! ErrorsList
+        error.apiUrl = Service.BaseUrl + service
+        error.requestParam = params
+        error.response = response
+        error.time = time
+        error.version = "Device Name - \(deviceName), iOS Version - \(iOSVersion), App Version - \(appVersion)"
+         self.saveEntity(callback: { isSuccess in })
+    }
+
+}
+
+
+
+
+

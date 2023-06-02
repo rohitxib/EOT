@@ -1,0 +1,48 @@
+//
+//  TaskTableViewCell.swift
+//  RealmDemo
+//
+//  Created by Hatshit on 12/04/18.
+//  Copyright © 2018 Aplite. All rights reserved.
+//
+
+import UIKit
+
+class TaskTableViewCell: UITableViewCell {
+    
+    
+    @IBOutlet weak var lblBadge: UILabel!
+    @IBOutlet weak var rightView: UIView!
+    @IBOutlet weak var leftBaseView : UIView!
+    @IBOutlet weak var name: UILabel!
+    @IBOutlet weak var taskDescription: UILabel!
+    @IBOutlet weak var priorityImage: UIImageView!
+    @IBOutlet weak var time: UILabel!
+    @IBOutlet weak var timeAMPM: UILabel!
+    @IBOutlet weak var statusImage: UIImageView!
+    @IBOutlet weak var status: UILabel!
+    @IBOutlet weak var lblTitle: UILabel!
+    @IBOutlet weak var lblEquipementName: UILabel!
+    @IBOutlet weak var lblEquipementAddress: UILabel!
+    
+    
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        // Initialization code
+      //  setLocalization()
+    }
+    
+    //func setLocalization() -> Void {
+       
+      //  timeAMPM.text = LanguageKey.am
+      //  timeAMPM.text = LanguageKey.pm
+        
+    //}
+
+    override func setSelected(_ selected: Bool, animated: Bool) {
+        super.setSelected(selected, animated: animated)
+
+        // Configure the view for the selected state
+    }
+
+}

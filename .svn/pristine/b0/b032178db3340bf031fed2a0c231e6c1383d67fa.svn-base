@@ -1,0 +1,128 @@
+//
+//  CompletionNots.swift
+//  EyeOnTask
+//
+//  Created by Mojave on 04/02/20.
+//  Copyright © 2020 Hemant. All rights reserved.
+//
+
+import UIKit
+
+class CompletionNots: UIViewController {
+    
+   // var jobDetail = UserJobList()
+    
+    var jobModel = UserJobList()
+    var callback: ((String) -> Void)?
+    @IBOutlet weak var completionNots_txtVw: UITextView!
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        self.title = LanguageKey.completion_note
+        
+        
+        
+        
+        completionNots_txtVw.becomeFirstResponder()
+        
+        
+        if  jobModel.complNote != nil && jobModel.complNote != "" {
+            completionNots_txtVw.text =  jobModel.complNote
+            let saveBtn = UIBarButtonItem(title:  LanguageKey.update, style: .plain, target: self, action:  #selector(ActionButtonMethod))
+            navigationItem.rightBarButtonItem = saveBtn
+        }else{
+            let saveBtn = UIBarButtonItem(title:  LanguageKey.add, style: .plain, target: self, action:  #selector(ActionButtonMethod))
+            navigationItem.rightBarButtonItem = saveBtn
+            completionNots_txtVw.text = ""
+        }
+        
+        let backButton = UIBarButtonItem(title: LanguageKey.cancel, style: .plain, target: self, action:  #selector(backButtonMethod))
+        navigationItem.leftBarButtonItem = backButton
+        
+    }
+    
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+       APP_Delegate.hideBackButtonText()
+    }
+    
+    // For leftBarButtonItem :-
+    
+    @objc func backButtonMethod() -> Void {
+       self.dismiss(animated: true, completion: nil)
+    }
+    
+    
+    @objc func ActionButtonMethod() -> Void {
+         setCompletionNotes()
+    }
+    
+    //=============================
+    // MARK:- setCompletionNotes
+    //=============================
+    
+    func setCompletionNotes(){
+        
+        completionNots_txtVw.resignFirstResponder()
+        if !isHaveNetowork() {
+            killLoader()
+            ShowError(message: AlertMessage.networkIssue, controller: windowController)
+            return
+        }
+        
+        showLoader()
+        
+        let param = Params()
+        param.jobId = jobModel.jobId
+        param.usrId = getUserDetails()!.usrId
+        param.complNote = trimString(string: completionNots_txtVw.text)
+    
+        serverCommunicator(url: Service.setCompletionNotes, param: param.toDictionary) { (response, success) in
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(CommonResponse.self, from: response as! Data) {
+                    if decodedData.success == true{
+                    
+                        DispatchQueue.main.async {
+                            if self.callback != nil {
+                                self.callback!(trimString(string: self.completionNots_txtVw.text))
+                            }
+                            
+                            self.jobModel.complNote = trimString(string: self.completionNots_txtVw.text)
+                            DatabaseClass.shared.saveEntity(callback: { _ in })
+                            
+//                            if let msg = decodedData.message {
+//                                windowController.showToast(message: msg)
+//                            }
+//
+                            
+                            self.dismiss(animated: true, completion: nil)
+                        }
+                       
+                    }else{
+                        if let msg = decodedData.message {
+                            ShowError(message: getServerMsgFromLanguageJson(key: msg)!, controller: windowController)
+                        }
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {(cancel,done) in
+                        if cancel {
+                            showLoader()
+                           
+                        }
+                    })
+                }
+            }else{
+                ShowAlert(title: errorString, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: { (cancelButton, okButton) in
+                    if cancelButton {
+                        showLoader()
+                        
+                    }
+                })
+            }
+        }
+    }
+    
+}

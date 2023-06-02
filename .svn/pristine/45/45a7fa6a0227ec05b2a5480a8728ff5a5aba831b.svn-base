@@ -1,0 +1,472 @@
+//
+//  Service.swift
+//  EyeOnTask
+//
+//  Created by Apple on 18/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import Foundation
+import UIKit
+import MobileCoreServices
+
+var errorString : String = ""
+var testerUser = true
+var TEST_USER_NAME = "alex"
+var errorCount = 0
+func mainUrl() -> String {
+    
+   // let baseUrl : String = "https://www.eyeontask.com/en/eotServices/"
+    let baseUrl : String = "https://staging.eyeontask.com/en/eotServices/"
+   // let baseUrl : String = "http://192.168.88.52/eotServices/"
+   //let baseUrl : String = "http://192.168.88.52/eotServices/AssetsController/"
+    //let baseUrl : String = "http://192.168.88.52/eotServices/"
+   // let baseUrl : String = "http://192.168.88.13:4300/#/auth/login/"
+    
+    
+    
+//    var baseUrl = ""
+//    if  testerUser {
+//        baseUrl = "https://staging.eyeontask.com/en/eotServices/"
+//    }else{
+//        baseUrl = "https://www.eyeontask.com/en/eotServices/"
+//    }
+    
+    return baseUrl
+}
+
+func setTesterUser() {
+    testerUser = true
+}
+
+func setLiveUser() {
+    testerUser = false
+}
+
+
+
+ public  class Service {
+    
+    //==============
+    //Base URL
+    //===============
+    
+    //Error String
+    static var BaseUrl : String = mainUrl()
+    
+    
+    
+    //==============
+    //Services
+    //===============
+    
+    static let signin : String = "AuthenticationController/mobileLogin" //"AuthenticationController/login"
+    static let errorUpload : String = "AuthenticationController/errorLogMail"
+    static let forgotPassword : String = "AuthenticationController/forgotPassword"
+    static let forgotPasswordKey: String = "AuthenticationController/forgotPasswordKey"
+    static let changePassword : String = "UserController/changePassword"
+    static let forgotPasswordReset : String = "AuthenticationController/forgotPasswordReset"
+    // static let getApiUrl : String = "RedisController/getApiUrl"
+    static let  getApiUrl = "AuthenticationController/getApiUrl"
+    static let  getMobileDefaultSettings = "AuthenticationController/getMobileDefaultSettings"
+    
+    //Audit section API's
+    static let getAuditEquipmentList : String = "AssetsController/getAuditEquipmentList"
+    static let getupdateAuditEquipment = "AssetsController/updateAuditEquipment"
+    static let getAuditList : String = "AssetsController/getAuditUserList"
+    static let uploadAuditDocument : String = "AssetsController/uploadAuditDocument"//
+    static let getAuditAttachments : String = "AssetsController/getAuditAttachmentApi"//
+    static let addAuditFeedback : String = "AssetsController/addAuditReport"
+    
+    
+    //Job section API's
+    static let getJobList : String = "JobController/getUserJobList"
+    static let addJob : String = "JobController/addJob"
+    static let getJobTitleList : String = "JobController/getJobTitleList"
+    static let changeJobStatus : String = "JobController/changeJobStatus"
+    static let addFeedback : String = "JobController/addJobFeedback"
+    static let JobStatusHistory : String = "JobController/getJobStatusHistoryMobile"
+    static let jobTagList : String = "JobController/getTagList"
+    static let setCompletionNotes : String = "jobController/setCompletionNotes"
+    
+    //Client section API's
+    static let getClientSink : String = "CompanyController/getClientSink"
+    static let getFieldWorkerList : String = "UserController/getFieldWorkerList"
+    static let getAccType : String = "CompanyController/getCompanyAccountTypeList"
+    static let addClient : String = "CompanyController/addClient"
+    static let getClientContactSink : String = "CompanyController/getClientContactSink"
+    static let updateClientContact : String = "CompanyController/updateClientContact"
+    static let getClientSiteSink : String = "CompanyController/getClientSiteSink"
+    static let updateClientSite : String = "CompanyController/updateClientSite"
+    static let updateClient : String = "CompanyController/updateClient"
+    static let addClientSite : String = "CompanyController/addClientSite"
+    static let addClientContact : String = "CompanyController/addClientContact"
+    static let logout : String = "UserController/logout"
+    
+    //GroupChat section API's
+    static let groupUserListForChat : String = "UserController/groupUserListForChat"
+    
+    //CustomForm
+    static let getCustomFormNmList : String = "JobController/getFormList"
+    static let getQuestionsByParentId: String = "JobController/getQuestionsByParentId"
+    static let addAnswer: String = "JobController/addAnswer"
+    
+    //Documents
+    static let getDocumentsList : String = "JobController/getJobAttachments"
+    static let uploadDocument : String = "JobController/uploadDocument"
+    static let updateDocument : String = "JobController/updateJobDocument"
+    
+    // Location Update
+    static let getLocationUpdate : String = "UserController/addFWlatlong"
+    static let postMultipleLocationUpdate : String = "UserController/addFWlatlong2"
+    
+    static let sendPushNotification : String = "UserController/sendNotificationToUser"
+    
+    // Invoice  InvoiceController/updateInvoice
+    static let getInvoiceDetail : String = "InvoiceController/getInvoiceDetail"
+    static let getItemsList : String = "InvoiceController/getItemList"
+    static let updateInvoice : String = "InvoiceController/updateInvoice"
+    static let addInvoice : String = "InvoiceController/addInvoice"
+    static let getTaxList : String = "CompanyController/getTaxList"
+    static let invoicePaymentRecieve : String = "InvoiceController/invoicePaymentRecieve"
+    static let sendInvoiceEmailTemplate : String = "InvoiceController/sendInvoiceEmailTemplate"
+    static let getInvoiceEmailTemplate : String = "InvoiceController/getInvoiceEmailTemplate"
+    static let generateInvoicePDF : String = "InvoiceController/generateInvoicePDF"
+    static let getCompanySettings : String = "CompanyController/getCompanySettingDetails"
+    static let generateInvoice : String = "InvoiceController/generateInvoice"
+    static let addCheckInOutIime : String = "UserController/addCheckInOutIime"
+    
+    
+    //Quotation
+    static let getAdminQuoteList : String = "QuotationController/getAdminQuoteList"
+    static let getQuoteDetailForMobile : String  = "QuotationController/getQuoteDetailForMobile"
+    static let addUpdateQuotationForMobile : String  = "QuotationController/addUpdateQuotationForMobile"
+    static let addQuotItemForMobile : String  = "QuotationController/addQuotItemForMobile"
+    static let convertQuotationToJob : String  = "QuotationController/convertQuotationToJob"
+    static let getQuotationEmailTemplate : String = "QuotationController/getQuotationEmailTemplate"
+    static let sendQuotationEmailTemplate : String = "QuotationController/sendQuotationEmailTemplate"
+    static let generateQuotPDF : String = "QuotationController/generateQuotPDF"
+    static let updateQuotItemForMobile : String = "QuotationController/updateQuotItemForMobile"
+    static let deleteQuotItemForMobile : String = "QuotationController/deleteQuotItemForMobile"
+    static let getEquipmentInfoByBarcode : String = "AssetsController/getEquipmentInfoByBarcode"
+    static let getQuatSetting : String = "CompanyController/getQuatSetting"
+    
+    //One to One chat
+    static let uploadChatDocument : String = "UserController/uploadChatDocument"
+    
+    // User activity log api
+    static let insertActivityLog : String = "UserController/insertActivityLog"
+    
+    //Expence module
+    static let addExpense : String = "ExpenseController/addExpense"
+    static let getExpenseList : String = "ExpenseController/getExpenseList"
+    static let getExpenseDetail : String = "ExpenseController/getExpenseDetail"
+}
+
+//====================
+//Post Sevice method
+//====================
+
+func serverCommunicator(url:String , param:Dictionary<String, Any>?,callBack : @escaping (Any?, Bool) -> Void) {
+    guard let url1 = URL(string: Service.BaseUrl+url) else { return }
+//
+    if DebugModePrint() {
+         print(url1)
+    }
+//
+   
+    
+    if isHaveNetowork() {
+        var request = URLRequest(url: url1)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(authenticationToken ?? "", forHTTPHeaderField: "Token")
+        request.setValue(TimeZone.current.identifier, forHTTPHeaderField: "User-Time-Zone")
+        request.timeoutInterval = 30.0
+        
+        if param != nil {
+            request.httpBody =  try? JSONSerialization.data(withJSONObject: param!)
+        }
+        
+        callRequest(request: request, callBack: callBack) // Send request to CallRequest method
+  
+    }else{
+        killLoader()
+        errorString = AlertMessage.checkNetwork
+        //increaseErrorCount(callBack: callBack, data: nil)
+        callBack(nil , false)
+    }
+}
+
+func callRequest(request : URLRequest, callBack : @escaping (Any?, Bool) -> Void) -> Void {
+    //Call Request and Handle data, response and error
+    let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+        
+        guard error == nil else {
+            errorString = (error?.localizedDescription)!
+            increaseErrorCount(callBack: callBack, data: data)
+            return
+        }
+        
+        guard let data = data else {
+            errorString = AlertMessage.formatProblem
+            increaseErrorCount(callBack: callBack, data: nil)
+            return
+        }
+        
+        
+        if DebugModePrint() {
+            //Data convert in string for check actual response (Use this code if use die on server)
+            let returnData = String(data: data, encoding: .utf8)
+            print("Result == \(returnData ?? "")")
+        }
+
+        
+        
+        do {
+            guard let anyObj = (try JSONSerialization.jsonObject(with: data, options: []) as? [String:Any]) else {
+                print("Could not get JSON from response as Dictionary")
+                increaseErrorCount(callBack: callBack, data: nil)
+                return
+            }
+            
+            if  (anyObj )["statusCode"] != nil && ((anyObj )["statusCode"] as! String == "401"){
+                killLoader()
+                ShowAlert(title: getServerMsgFromLanguageJson(key: ((anyObj )["message"] as! String)), message:"" , controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                    if (Ok){
+                        if errorCount > 0 {
+                            errorCount = 0
+                        }
+                        navigateToLoginPage()
+                    }
+                })
+                return
+            }
+            
+            
+            if errorCount > 0 {
+                errorCount = 0
+            }
+            
+            callBack(data , true)
+        } catch {
+            errorString = AlertMessage.formatProblem
+            increaseErrorCount(callBack: callBack, data: nil)
+            //callBack(data , false)
+        }
+    }
+    task.resume()
+}
+
+
+
+
+
+//=====================================
+//Post Sevice method with IMAGE UPLOAD
+//=====================================
+func serverCommunicatorUplaodImage( url:String, param:Dictionary<String, Any>?,image:UIImage?, imagePath:String, imageName: String, callBack : @escaping (Any?, Bool) -> Void){
+    
+    if isHaveNetowork() {
+        var body = Data()
+        let BoundaryConstant = "----------V2ymHFg03ehbqgZCaKO6jy"
+        let contentType = "multipart/form-data; boundary=\(BoundaryConstant)"
+       
+        
+        if let paramDict = param {
+            for (key, value) in paramDict {
+                body.append(Data("--\(BoundaryConstant)\r\n".utf8))
+                body.append(Data("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".utf8))
+                body.append(Data("\(value)\r\n".utf8))
+            }
+        }
+        
+        
+        
+        //Convert Image to Data formate
+        if image != nil {
+            var imageData : Data?
+            if let img = image{
+                imageData = img.jpegData(compressionQuality: 0.5)
+            }
+            
+            if (imageData != nil) {
+                body.append(Data("--\(BoundaryConstant)\r\n".utf8))
+                body.append(Data("Content-Disposition: form-data; name=\"\(imagePath)\"; filename=\"\(imageName).jpeg\"\r\n".utf8))
+                body.append(Data("Content-Type: image/jpeg\r\n\r\n".utf8))
+                body.append(imageData!)
+                body.append(Data("\r\n".utf8))
+            }
+            body.append(Data("--\(BoundaryConstant)--\r\n".utf8))
+        }
+        
+        //Request for Service
+        guard let url1 = URL(string: Service.BaseUrl+url) else { return }
+        
+//        if DebugModePrint() {
+//            print(url1)
+//        }
+        
+        var request = URLRequest(url: url1)
+        request.timeoutInterval = 30
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.addValue(authenticationToken ?? "", forHTTPHeaderField: "Token")
+        
+        callRequest(request: request, callBack: callBack) // Send request to CallRequest method
+    }else{
+        killLoader()
+        errorString = AlertMessage.checkNetwork
+        callBack(nil , false)
+    }
+}
+
+func serverCommunicatorUplaodMultipalImage( url:String, param:Dictionary<String, Any>?, imageName: String, callBack : @escaping (Any?, Bool) -> Void){
+    
+    if isHaveNetowork() {
+        var body = Data()
+        let BoundaryConstant = "----------V2ymHFg03ehbqgZCaKO6jy"
+        let contentType = "multipart/form-data; boundary=\(BoundaryConstant)"
+       
+        
+        if let paramDict = param {
+            for (key, value) in paramDict {
+                
+                if value is UIImage {
+                    var imageData : Data?
+                    imageData = (value as! UIImage).jpegData(compressionQuality: 0.5)
+                    
+                    if (imageData != nil) {
+                        body.append(Data("--\(BoundaryConstant)\r\n".utf8))
+                        body.append(Data("Content-Disposition: form-data; name=\"\(key)\"; filename=\"\(imageName).jpeg\"\r\n".utf8))
+                        body.append(Data("Content-Type: image/jpeg\r\n\r\n".utf8))
+                        body.append(imageData!)
+                        body.append(Data("\r\n".utf8))
+                    }
+                    body.append(Data("--\(BoundaryConstant)--\r\n".utf8))
+                }else{
+                    body.append(Data("--\(BoundaryConstant)\r\n".utf8))
+                    body.append(Data("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".utf8))
+                    body.append(Data("\(value)\r\n".utf8))
+                }
+                
+            }
+        }
+        
+        
+        //Request for Service
+        guard let url1 = URL(string: Service.BaseUrl+url) else { return }
+        
+//                if DebugModePrint() {
+//                    print(url1)
+//                }
+        
+        var request = URLRequest(url: url1)
+        request.timeoutInterval = 30
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.addValue(authenticationToken ?? "", forHTTPHeaderField: "Token")
+        
+        callRequest(request: request, callBack: callBack) // Send request to CallRequest method
+    }else{
+        killLoader()
+        errorString = AlertMessage.checkNetwork
+        callBack(nil , false)
+    }
+}
+
+
+func serverCommunicatorUplaodDocuments( url:String, param:Dictionary<String, Any>?,docUrl:URL, DocPathOnServer:String, docName: String, callBack : @escaping (Any?, Bool) -> Void){
+    
+    if isHaveNetowork() {
+        
+        var body = Data()
+        let BoundaryConstant = "----------V2ymHFg03ehbqgZCaKO6jy"
+        let contentType = "multipart/form-data; boundary=\(BoundaryConstant)"
+      
+        
+        if let paramDict = param {
+            for (key, value) in paramDict {
+                body.append(Data("--\(BoundaryConstant)\r\n".utf8))
+                body.append(Data("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".utf8))
+                body.append(Data("\(value)\r\n".utf8))
+            }
+        }
+        
+        
+        
+        //Convert Image to Data formate
+            let filename = docUrl.lastPathComponent
+            let splitName = filename.split(separator: ".")
+            let filetype = splitName.last!
+            let mimeType = mimeTypeForPath(path: docUrl)
+        
+        
+            body.append(Data("--\(BoundaryConstant)\r\n".utf8))
+            body.append(Data("Content-Disposition: form-data; name=\"\(DocPathOnServer)\"; filename=\"\(docName).\(filetype)\"\r\n".utf8))
+            body.append(Data("Content-Type: \(mimeType)\r\n\r\n".utf8))
+        
+        
+            do {
+                let imgData = try Data(contentsOf: docUrl as URL)
+                body.append(imgData)
+            }
+            catch {
+                // can't load image data
+            }
+        
+            //body.append(try Data(contentsOf: docUrl as URL))
+            body.append(Data("\r\n".utf8))
+            body.append(Data("--\(BoundaryConstant)--\r\n".utf8))
+        
+        //Request for Service
+        guard let url1 = URL(string: Service.BaseUrl+url) else { return }
+//        if DebugModePrint() {
+//            print(url1)
+//        }
+        
+        var request = URLRequest(url: url1)
+        request.timeoutInterval = 30
+        request.httpMethod = "POST"
+        request.httpBody = body
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
+        request.addValue(authenticationToken ?? "", forHTTPHeaderField: "Token")
+       
+        callRequest(request: request, callBack: callBack) // Send request to CallRequest method
+    }else{
+        killLoader()
+        errorString = AlertMessage.checkNetwork
+        callBack(nil , false)
+    }
+}
+
+
+
+func increaseErrorCount(callBack : @escaping (Any?, Bool) -> Void, data:Data?) -> Void {
+    // Note : if get simutaniously 3 times error from any API than we automatically navigate to login page
+    errorCount = errorCount + 1
+    if errorCount > 2 {
+        ShowAlert(title: AlertMessage.formatProblem, message:"" , controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+            if (Ok){
+                killLoader()
+                navigateToLoginPage()
+            }
+        })
+    }else{
+        callBack(data , false)
+    }
+}
+
+
+func mimeTypeForPath(path: URL) -> String {
+    let pathExtension = path.pathExtension
+    
+    if let uti = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, pathExtension as NSString, nil)?.takeRetainedValue() {
+        if let mimetype = UTTypeCopyPreferredTagWithClass(uti, kUTTagClassMIMEType)?.takeRetainedValue() {
+            return mimetype as String
+        }
+    }
+    return "application/octet-stream"
+}

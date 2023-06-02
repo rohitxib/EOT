@@ -1,0 +1,43 @@
+//
+//  EqlistResponse.swift
+//  EyeOnTask
+//
+//  Created by Mojave on 15/11/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+import Foundation
+
+class EqListResponse: Codable {
+    var success: Bool?
+    var message: String?
+    var data: [EquipementListData]?
+    var count: String?
+    var statusCode: String?
+}
+
+class EquipementListData: Codable {
+    //var equId : String?
+    var equnm : String?
+    var mno : String?
+    var sno : String?
+    var audId : String?
+    var location : String?
+    var remark : String?
+    var changeBy : String?
+    var status : String?
+    var updateData : String?
+    var createDate : String?
+    var equId : String?
+    var lat : String?
+    var lng : String?
+}
+
+
+class barcodeAuditResponse: Codable {
+    var success: Bool?
+    var message: String?
+    var data: EquipementListData?
+    var count: String?
+    var statusCode: String?
+}

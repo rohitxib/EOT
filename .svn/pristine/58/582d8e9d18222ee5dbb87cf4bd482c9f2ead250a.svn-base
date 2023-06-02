@@ -1,0 +1,400 @@
+//
+//  ExpenceListVC.swift
+//  EyeOnTask
+//
+//  Created by Hemant's mac on 08/05/20.
+//  Copyright © 2020 Hemant. All rights reserved.
+//
+
+import UIKit
+
+class ExpenceListVC: UIViewController, SWRevealViewControllerDelegate {
+
+    @IBOutlet weak var collectionVw: UICollectionView!
+    @IBOutlet weak var extraButton: UIBarButtonItem!
+    @IBOutlet weak var normalSearchView: UIView!
+    @IBOutlet weak var advanceFilterview: UIView!
+    @IBOutlet weak var normalSearch_H: NSLayoutConstraint!
+    @IBOutlet weak var advanceFilter_H: NSLayoutConstraint!
+    
+     var refreshControl = UIRefreshControl()
+     var expences = [Expence]()
+     var filteredExpence = [[String : [Expence]]]()
+     var arrOFData = [Expence]()
+     var filterDict = [String : [Expence]]()
+     let expencesForFilter : [expenceStatus] = expenceStatus.allCases
+     var selectedExpencesforFilter = [Int]()
+    
+    
+    @IBOutlet weak var tableExpence: UITableView!
+    
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        //{"success":true,"message":"","data":[{"expId":"27","name":"Mileage","amt":"1000.0000","dateTime":"1587187801","category":"Travel","tag":"gwalior","status":"1","des":"testData"}],"count":"1"}
+        
+        self.title = "Expences"
+        
+        advanceFilter_H.constant = 0.0
+        normalSearch_H.constant = 0.0
+        
+        let expence = Expence()
+        expence.expId = "27"
+        expence.name = "Mileage"
+        expence.amt = "1000.00"
+        expence.dateTime = "1587187801"
+        expence.category = "Travel"
+        expence.tag = "gwalior"
+        expence.status = "1"
+        expence.des = "testData"
+        
+        let expence1 = Expence()
+        expence1.expId = "28"
+        expence1.name = "Computer"
+        expence1.amt = "25000.00"
+        expence1.dateTime = "1587187800"
+        expence1.category = "Technology"
+        expence1.tag = "Indore"
+        expence1.status = "2"
+        expence1.des = "This is for testing purpose"
+        
+        expences.append(expence)
+        expences.append(expence1)
+        
+        if let revealController = self.revealViewController(){
+           revealViewController().delegate = self
+           extraButton.target = revealViewController()
+           extraButton.action = #selector(SWRevealViewController.revealToggle(_:))
+           revealController.tapGestureRecognizer()
+       }
+        
+        
+        createDateViseSection()
+        
+        // getExpenceList()
+    }
+    
+    
+    func addRefreshControl()  {
+         refreshControl.attributedTitle = NSAttributedString(string: " ")
+         refreshControl.addTarget(self, action: #selector(refreshControllerMethod), for: UIControl.Event.valueChanged)
+         tableExpence.addSubview(refreshControl) // not required when using UITableViewController
+    }
+    
+    
+    
+    //=========================
+    // MARK:- Button methods
+    //=========================
+    @objc func refreshControllerMethod() {
+           getExpenceList()
+       }
+    
+    @IBAction func btnAdvanceFilter(_ sender: Any) {
+
+        print ("asdfasdfsadf")
+        if self.advanceFilter_H.constant == 0 {
+            advanceFilter_H.constant = 55.0
+            advanceFilterview.layoutIfNeeded()
+        }else{
+            advanceFilter_H.constant = 0.0
+            advanceFilterview.layoutIfNeeded()
+        }
+        
+        
+        
+        
+        
+      //  DispatchQueue.main.async {
+//            if self.advanceFilter_H.constant == 0 {
+//
+//                self.advanceFilter_H.constant = 55.0
+//                self.normalSearch_H.constant = 0.0
+//
+//                UIView.animate(withDuration: 0.3, animations: {
+//                        self.view.layoutIfNeeded()
+//                  }) { (isComplete) in
+//
+//                      if isComplete {
+//
+//                      }
+//                  }
+//
+//
+//            }else{
+//                self.advanceFilter_H.constant = 0.0
+//                self.normalSearch_H.constant = 0.0
+//
+//                UIView.animate(withDuration: 0.3, animations: {
+//                        self.view.layoutIfNeeded()
+//                  }) { (isComplete) in
+//
+//                      if isComplete {
+//
+//                      }
+//                  }
+//            }
+       // }
+     }
+    
+    @IBAction func btnNormalSearch(_ sender: Any) {
+         print ("asdfasdfsadf")
+        
+       if self.normalSearch_H.constant == 0 {
+           normalSearch_H.constant = 55.0
+           normalSearchView.layoutIfNeeded()
+       }else{
+           normalSearch_H.constant = 0.0
+           normalSearchView.layoutIfNeeded()
+       }
+               
+    }
+    
+    //=========================
+    // MARK:- API methods
+    //=========================
+    
+    
+    func getExpenceList() {
+        
+        if !isHaveNetowork() {
+            if self.refreshControl.isRefreshing {
+                self.refreshControl.endRefreshing()
+            }
+            return
+        }
+        
+        let param = Params()
+        param.limit = ""
+        param.index = "0"
+        param.search = ""
+        param.apiRequestFrom = "2"
+        
+        serverCommunicator(url: Service.getExpenseList, param: param.toDictionary) { (response, success) in
+            DispatchQueue.main.async {
+                if self.refreshControl.isRefreshing {
+                    self.refreshControl.endRefreshing()
+                }
+            }
+        
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(ExpenceListResponse.self, from: response as! Data) {
+                    if decodedData.success == true {
+                        if let totalExpences = decodedData.data{
+                            if totalExpences.count > 0 {
+                                self.expences = totalExpences
+                            }
+                        }
+                    }
+                }else{
+                    ShowAlert(title: AlertMessage.formatProblem, message: "", controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: UIAlertController.Style.alert, callback: {(cancel,done) in
+                        if cancel {
+                            showLoader()
+                            self.getExpenceList()
+                        }
+                    })
+                }
+            }
+        }
+    }
+    
+    
+    func createDateViseSection() {
+        
+        
+         var currentDate = ""
+         self.expences = self.expences.sorted(by: { $0.dateTime! > $1.dateTime! })
+
+        for  expence in self.expences {
+            let strDate = dayDifference(unixTimestamp: (expence.dateTime!))
+
+            if(self.filteredExpence.count > 0){
+                
+                // Below is new change implemented by Hemant
+                    if currentDate == strDate {
+                        var dictObj = self.filteredExpence.last
+                        dictObj![strDate]?.append(expence)
+                        self.filteredExpence[self.filteredExpence.count-1] = dictObj!
+                    }else{
+                        currentDate = strDate
+                        self.arrOFData.removeAll()
+                        self.filterDict.removeAll()
+                        self.arrOFData.append(expence)
+                        self.filterDict[strDate] = self.arrOFData
+                        self.filteredExpence.append(self.filterDict)
+                    }
+           }else{
+                currentDate = strDate
+                self.arrOFData.append(expence)
+                self.filterDict[strDate] = self.arrOFData
+                self.filteredExpence.append(self.filterDict)
+            }
+        }
+
+
+                    
+
+                DispatchQueue.main.async {
+                    self.tableExpence.reloadData()
+                }
+                
+    }
+
+}
+
+
+
+extension ExpenceListVC : UITableViewDataSource, UITableViewDelegate, UICollectionViewDelegate, UICollectionViewDataSource {
+    
+      //=========================
+      // MARK:- TableView methods
+      //=========================
+    
+    
+        func numberOfSections(in tableView: UITableView) -> Int {
+            return self.filteredExpence.count
+        }
+    
+        func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+            if(self.filteredExpence.count != 0){
+                let dict = self.filteredExpence[section]
+                let firstKey = Array(dict.keys)[0] // or .first
+                let arr = dict[firstKey]
+                return arr!.count
+            }else{
+                return filteredExpence.count
+            }
+        }
+    
+     
+    func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+           let headerView = UIView()
+           headerView.frame = CGRect(x: 0, y: 0, width: Int(self.tableExpence.frame.size.width), height: 30)
+           headerView.backgroundColor = UIColor(red: 246.0/255.0, green: 242.0/255.0, blue: 243.0/255.0, alpha: 1.0)
+           
+          let headerLabel = UILabel(frame: CGRect(x: 14, y: 10, width:
+               headerView.bounds.size.width-20, height: 20))
+            headerLabel.font = Font.ArimoBold(fontSize: 13.0)
+           headerLabel.textColor = UIColor(red: 115.0/255.0, green: 125.0/255.0, blue: 126.0/255.0, alpha: 1.0)
+           
+           let dict = self.filteredExpence[section]
+           let firstKey = Array(dict.keys)[0]
+           let arr = firstKey.components(separatedBy: ",")
+           let att = changeColoreOFDate(main_string: firstKey, string_to_color: arr[0])
+
+           if(arr[0] == "Today" || arr[0] == "Yesterday" || arr[0] == "Tomorrow" ) {
+                 headerLabel.attributedText = att
+           }else{
+                 headerLabel.text = att.string
+           }
+           
+         
+           headerLabel.textAlignment = .left;
+           
+           DispatchQueue.main.async {
+               headerView.addSubview(headerLabel)
+           }
+           
+           //headerView.addSubview(headerLabel)
+           return headerView
+       }
+       
+    
+        func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+               if(self.filteredExpence.count != 0){
+                   let dict = self.filteredExpence[section]
+                   let firstKey = Array(dict.keys)[0] // or .first
+                   
+                   if ((firstKey as String) == "") && (section == 0) {
+                       return 0.0
+                   }
+                    return 30.0
+               }else{
+                   return 30.0
+               }
+          
+           }
+       
+       func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+           return 103.0
+       }
+        
+        func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+             let cell = tableView.dequeueReusableCell(withIdentifier: "expenceCell") as! ExpenceListCell
+             let dict = self.filteredExpence[indexPath.section]
+             let firstKey = Array(dict.keys)[0] // or .first
+             let arr = dict[firstKey]
+             let expence = arr![indexPath.row]
+             cell.configure(expence: expence)
+             return cell
+        }
+    
+
+    
+        //===============================
+        // MARK:- CollectionView methods
+        //===============================
+        func numberOfSections(in collectionView: UICollectionView) -> Int {
+            return 1
+        }
+
+        func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+            return expencesForFilter.count
+        }
+
+        func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+            let cell = collectionVw.dequeueReusableCell(withReuseIdentifier: "jobCollCell", for: indexPath)as! jobCollectionCell
+            
+            let statusType : Int = expencesForFilter[indexPath.row].rawValue
+            let statusData = expenceStatusDetails(taskType: expencesForFilter[indexPath.row])
+            cell.lblTask.text = statusData.0.replacingOccurrences(of: " Task", with: "")
+            
+            
+            if selectedExpencesforFilter.firstIndex(of:statusType) != nil {
+                cell.greenView.backgroundColor = .init(red: 40.0/255.0, green: 166.0/255.0, blue: 70.0/255.0, alpha: 1.0)
+                cell.lblTask.textColor = .white
+                cell.imgCrossWidth.constant = 13.0
+                cell.imgVw.image = statusData.1
+            }else{
+                cell.greenView.backgroundColor = UIColor.white
+                cell.lblTask.textColor = .init(red: 115.0/255.0, green: 125.0/255.0, blue: 126.0/255.0, alpha: 1.0)
+                cell.imgCrossWidth.constant = 0.0
+                cell.imgVw.image = statusData.1
+            }
+            
+           
+            return cell
+        }
+
+
+         func collectionView(_ collectionView: UICollectionView,
+                              layout collectionViewLayout: UICollectionViewLayout,
+                              sizeForItemAt indexPath: IndexPath) -> CGSize {
+              let availableWidth = view.frame.width
+              let widthPerItem = availableWidth / 3
+              return CGSize(width: widthPerItem, height: 36)
+          }
+
+        func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+           // let cell : jobCollectionCell = collectionView.cellForItem(at: indexPath) as! jobCollectionCell
+           
+            let statusType : Int = expencesForFilter[indexPath.row].rawValue
+            if let index = selectedExpencesforFilter.firstIndex(of:statusType) {
+               // cell.greenView.backgroundColor = UIColor.white
+               // cell.lblTask.textColor = .init(red: 115.0/255.0, green: 125.0/255.0, blue: 126.0/255.0, alpha: 1.0)
+               // cell.imgCrossWidth.constant = 0.0
+                selectedExpencesforFilter.remove(at: index)
+            }else{
+               // cell.greenView.backgroundColor = .init(red: 40.0/255.0, green: 166.0/255.0, blue: 70.0/255.0, alpha: 1.0)
+               // cell.lblTask.textColor = .white
+               // cell.imgCrossWidth.constant = 13.0
+                selectedExpencesforFilter.append(statusType)
+            }
+            
+            collectionView.reloadData()
+           // filterDataFromDB()
+        }
+
+}

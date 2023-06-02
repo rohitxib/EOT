@@ -1,0 +1,74 @@
+//
+//  JobListResponse.swift
+//  EyeOnTask
+//
+//  Created by Hemant Pandagre on 30/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import Foundation
+
+
+class jobListResponse: Codable {
+    var success: Bool?
+    var message: String?
+    var data: [jobListData]?
+    var count: String?
+    var statusCode: String?
+}
+
+
+class jobListData: Codable {
+    var adr: String?
+    var athr: String?
+    var city: String?
+    var cltId: String?
+   // var clt_name: String?
+    var cnm: String?
+    var conId: String?
+   // var con_name: String?
+    var createDate: String?
+    var ctry: String?
+    var des: String?
+    var email: String?
+    var inst: String?
+    var jobId: String?
+    var jtId: [jtIdArray]?
+    var kpr: String?
+    var label: String?
+    var lat: String?
+    var lng: String?
+    var mob1: String?
+    var mob2: String?
+    var nm: String?
+    var parentId: String?
+    var prty: String?
+    var quotId: String?
+    var schdlFinish: String?
+    var schdlStart: String?
+    var siteId: String?
+    var skype: String?
+    var snm: String?
+    var state: String?
+    var status: String?
+    var tagData: [tagDataArray]?
+    var twitter: String?
+    var type: String?
+    var updateDate: String?
+    var zip: String?
+    var isdelete: String?
+    var tempId: String?
+    var landmark: String?
+    var complNote: String?
+}
+
+class jtIdArray: Codable {
+    var jtId: String?
+    var title: String?
+}
+
+
+class tagDataArray: Codable {
+    var tagId: String?
+    var tnm: String?
+}

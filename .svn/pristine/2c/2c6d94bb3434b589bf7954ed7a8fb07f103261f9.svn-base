@@ -1,0 +1,217 @@
+//
+//  AuditTabController.swift
+//  EyeOnTask
+//
+//  Created by Mojave on 07/11/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+//
+//  JobTabController.swift
+//  EyeOnTask
+//
+//  Created by Apple on 11/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+import CoreData
+//import BarcodeScanner
+import AVFoundation
+
+class AuditTabController: UITabBarController{
+    var name : String?
+    var  objOfUserJobList : AuditListData?
+    var tabUserJob = AuditListData()
+    var jobs = [AuditListData]()
+    var chatmodel = [ChatModel]()
+    var isChatTabSelected = false
+    var callback: ((Bool,NSManagedObject) -> Void)?
+    var customCollectionVew : CustomCollectionView?
+    var chatBadgePosition = 2
+    var btnMore : UIButton?
+    var invoiceId = ""
+    
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        SetBackBarButtonCustom()
+        //    tabBarController?.moreNavigationController.navigationBar.topItem?.title = LanguageKey.more
+        self.delegate = self
+        let storyboard = UIStoryboard(name: "MainAudit", bundle: nil)
+        var controllers = [UIViewController]()
+        
+        let detailCon = storyboard.instantiateViewController(withIdentifier: "auditDetailVC") as! AuditDetailVC
+        detailCon.tabBarItem = UITabBarItem(title:LanguageKey.detail_audit, image: UIImage(named: "detail_selected"), tag: 0)
+        detailCon.auditDetail = objOfUserJobList
+        detailCon.jobArray = jobs
+        detailCon.callbackDetailVC = callback
+        controllers.append(detailCon)
+        
+//        let  isItem = isPermitForShow(permission: permissions.isItemVisible)
+//        if isItem {
+            let invoiceCon = storyboard.instantiateViewController(withIdentifier: "euipmentvc") as! EquipmentVC
+            invoiceCon.tabBarItem = UITabBarItem(title: LanguageKey.detail_equipment, image: UIImage(named: "Equipement"), tag: 1)
+            invoiceCon.auditDetail = objOfUserJobList
+            controllers.append(invoiceCon)
+//
+//            chatBadgePosition = 2
+//        }else{
+//            chatBadgePosition = 1
+//        }
+        
+        let scanCon = storyboard.instantiateViewController(withIdentifier: "barcode") as! ScanBarcodeVC
+        scanCon.tabBarItem = UITabBarItem(title: LanguageKey.detail_scan_barcode, image: UIImage(named: "qrcode"), tag: 1)
+        //scanCon.auditDetail = objOfUserJobList
+        controllers.append(scanCon)
+        
+        
+        let feedbackCon = storyboard.instantiateViewController(withIdentifier: "reportvc") as! AuditReportVC
+        feedbackCon.tabBarItem = UITabBarItem(title: LanguageKey.detail_report, image: UIImage(named: "Report"), tag: 1)
+        feedbackCon.auditDetail = objOfUserJobList
+        controllers.append(feedbackCon)
+        
+
+        
+        let Document = storyboard.instantiateViewController(withIdentifier: "auditDocument") as! AuditDocuments
+        Document.tabBarItem = UITabBarItem(title: LanguageKey.title_documents, image: UIImage(named: "Document"), tag: 1)
+        Document.auditDetail = objOfUserJobList
+        controllers.append(Document)
+        self.viewControllers = controllers
+        
+    }
+    
+    func SetBackBarButtonCustom()
+       {
+           //Back buttion
+
+             let button = UIBarButtonItem(image: UIImage(named: "back-arrow"), style: .plain, target: self, action:#selector(AuditVC.onClcikBack))
+             self.navigationItem.leftBarButtonItem  = button
+       }
+
+       @objc func onClcikBack()
+       {
+           _ = self.navigationController?.popViewController(animated: true)
+           self.dismiss(animated: true, completion: nil)
+       }
+    
+    
+    func scanBarcode() -> Void {
+        let viewController = BarcodeScannerViewController()
+        viewController.codeDelegate = self
+        viewController.errorDelegate = self
+        viewController.dismissalDelegate = self
+        viewController.auditId = objOfUserJobList?.audId
+        present(viewController, animated: true, completion: nil)
+    }
+    
+    
+    func getEquipmentListFromBarcodeScanner(barcodeString : String) -> Void {
+        
+        if !isHaveNetowork() {
+            ShowError(message: AlertMessage.networkIssue, controller: windowController)
+            killLoader()
+            return
+        }
+        
+        
+        let param = Params()
+        param.audId = objOfUserJobList?.audId
+        param.barCode = barcodeString
+        
+        
+        serverCommunicator(url: Service.getEquipmentInfoByBarcode, param: param.toDictionary) { (response, success) in
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(barcodeAuditResponse.self, from: response as! Data) {
+                    if decodedData.success == true{
+                        
+                        DispatchQueue.main.async {
+                             let vc = UIStoryboard(name: "MainAudit", bundle: nil).instantiateViewController(withIdentifier: "remarkTab") as! RemarkVC
+                            vc.equipment = decodedData.data
+                           self.navigationController?.pushViewController(vc, animated: true)
+                        }
+                    }else{
+                        self.showToast(message: getServerMsgFromLanguageJson(key: decodedData.message!)!)
+                    }
+                   
+                }else{
+                    
+                    if let decodedData = try? decoder.decode(CommonResponse.self, from: response as! Data) {
+                        self.showToast(message: getServerMsgFromLanguageJson(key: decodedData.message!)!)
+                    }else{
+                         ShowError(message: AlertMessage.formatProblem, controller: windowController)
+                    }
+                }
+            }
+        }
+    }
+}//END
+
+
+extension AuditTabController : BarcodeScannerErrorDelegate, BarcodeScannerCodeDelegate, BarcodeScannerDismissalDelegate, UITabBarControllerDelegate {
+    
+    func tabBarController(_ tabBarController: UITabBarController, shouldSelect viewController: UIViewController) -> Bool {
+        
+        if viewController.isKind(of: ScanBarcodeVC.self) {
+            if !isHaveNetowork() {
+                ShowError(message: AlertMessage.networkIssue, controller: windowController)
+                killLoader()
+                return false
+            }
+            
+            ActivityLog(module:Modules.audit.rawValue , message: ActivityMessages.auditScanBarcode)
+            scanBarcode()
+            return false
+        }
+        return true
+    }
+    
+    
+    func scanner(_ controller: BarcodeScannerViewController, didCaptureCode code: String, type: String) {
+        print(code)
+        getEquipmentListFromBarcodeScanner(barcodeString: code)
+        controller.dismiss(animated: true, completion: {
+            controller.reset()
+        })
+    }
+    
+    
+    func scanner(_ controller: BarcodeScannerViewController, didReceiveError error: Error) {
+        print(error)
+    }
+    
+    func scannerDidDismiss(_ controller: BarcodeScannerViewController) {
+        controller.dismiss(animated: true, completion: nil)
+    }
+    
+//    func ShowAlert()  {
+//       let alert = UIAlertController(title: LanguageKey.detail_scan_barcode, message: nil , preferredStyle: .alert)
+//        //2. Add the text field. You can configure it however you need.
+//        alert.addTextField { (textField) in
+//            textField.placeholder = ""
+//            textField.text = "17-275251-87"
+//        }
+//
+//        // 3. Grab the value from the text field, and print it when the user clicks OK.
+//        alert.addAction(UIAlertAction(title: LanguageKey.done, style: .default, handler: { [weak alert] (_) in
+//            
+//            let textField = alert?.textFields![0] // Force unwrapping because we know it exists.
+//            
+//            if textField!.text!.count > 0 {
+//                 self.getEquipmentListFromBarcodeScanner(barcodeString: textField!.text!)
+//            }else{
+//                self.showToast(message: "Please enter valid barcode")
+//            }
+//            
+//           
+//            
+//        }))
+//         alert.addAction(UIAlertAction(title: LanguageKey.cancel, style: .default, handler: nil ))
+//
+//        // 4. Present the alert.
+//        self.present(alert, animated: true, completion: nil)
+//    }
+}
+
+

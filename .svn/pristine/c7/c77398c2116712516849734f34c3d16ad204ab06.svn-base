@@ -1,0 +1,276 @@
+//
+//  CustomCollectionView.swift
+//  EyeOnTask
+//
+//  Created by mac on 11/09/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+
+enum CollectionType : Int , CaseIterable {
+    case Feedback = 1
+    case History
+    case Payment
+    case Invoice
+    case ClientChat
+    case CustomForm
+}
+
+class ControllerDetail: NSObject {
+    var id : CollectionType!
+    var name : String!
+    var image : String!
+    
+}
+
+
+import UIKit
+
+class CustomCollectionView: UIView {
+ 
+    var arrOfShowData = [TestDetails]()
+    var onHideComplete: ((Bool , TestDetails? , CollectionType) -> Void)?
+    let reuseIdentifier = "CustomCollectionViewCell"
+    /////////////////////////////////////
+    var screenSize = UIScreen.main.bounds
+    var screenWidth: CGFloat!
+    var screenHeight: CGFloat!
+    var controllerArry = [ControllerDetail]()
+    var badgeLabelIndex : Int?
+    var badgeCount = "0"
+  //  let controllerDesArry = [CollectionType.History : ["name" : ]]
+    
+    
+    
+    
+    ///////////////////////////////////////
+    lazy var collection_View : UICollectionView = {
+        
+        let frame = CGRect(x: screenSize.origin.x, y: screenSize.origin.y, width: screenSize.size.width, height:  300)
+        let layout = UICollectionViewFlowLayout()
+        layout.scrollDirection = .vertical
+
+        let cv = UICollectionView(frame: frame, collectionViewLayout: layout)
+        cv.translatesAutoresizingMaskIntoConstraints = false
+        cv.delegate = self
+        cv.dataSource = self
+        cv.isPagingEnabled = false
+        cv.isScrollEnabled = true
+        cv.setContentOffset(CGPoint(x: 0,y: 0), animated: true)
+        cv.register(CustomCollectionViewCell.self, forCellWithReuseIdentifier: reuseIdentifier)
+        cv.backgroundColor = .white
+        return cv
+    }()
+    
+  // var collection_View: UICollectionView?
+    
+    class func instanceFromNib() -> UIView {
+        return UINib(nibName: "CustomCollectionView", bundle: nil).instantiate(withOwner: nil, options: nil)[0] as! UIView
+    }
+    
+    
+    
+    
+    func setUpMethod(arr : [TestDetails]){
+        
+      let  isItem = isPermitForShow(permission: permissions.isItemVisible)
+      let  isPayment = isPermitForShow(permission: permissions.isPaymentVisible)
+      let  isInvoice = isPermitForShow(permission: permissions.isInvoiceVisible)
+     // let  isClientChats = isPermitForShow(permission: permissions.isClientChatEnable)
+        
+        
+        var isClientChats = true
+        if let enableClientChat = getDefaultSettings()?.isClientChatEnable{ //This is round off digit for invoice
+            if enableClientChat == "0"{
+                isClientChats = false
+            }
+        }
+        
+        
+         
+
+        //Collectionview order -  Feedback, History, Payment, Invoice, client chat , custom form
+        
+        if isItem {
+           let feedback = ControllerDetail()
+              feedback.id = CollectionType.Feedback
+              feedback.name = LanguageKey.title_feedback
+              feedback.image = "FeedbackGray"
+              controllerArry.append(feedback)
+        }
+
+           let history = ControllerDetail()
+           history.id = CollectionType.History
+           history.name = LanguageKey.title_history
+           history.image = "History_icon_unselcted"
+           controllerArry.append(history)
+        
+        if isPayment {
+           let payment = ControllerDetail()
+           payment.id = CollectionType.Payment
+           payment.name = LanguageKey.title_payment
+           payment.image = "Payment"
+           controllerArry.append(payment)
+       }
+        
+        if isInvoice {
+           let invoice = ControllerDetail()
+           invoice.id = CollectionType.Invoice
+           invoice.name = LanguageKey.title_invoice
+           invoice.image = "Invoice"
+           controllerArry.append(invoice)
+       }
+        
+        if isClientChats {
+            let isClintChat = ControllerDetail()
+            isClintChat.id = CollectionType.ClientChat
+            isClintChat.name = LanguageKey.client_fw_chat
+            isClintChat.image = "client_chat"
+            controllerArry.append(isClintChat)
+            badgeLabelIndex = controllerArry.count - 1
+        }
+        
+        let customForm = ControllerDetail()
+        customForm.id = CollectionType.CustomForm
+        customForm.name = LanguageKey.title_cutomform
+        customForm.image = "CustomForm"
+        controllerArry.append(customForm)
+
+        DispatchQueue.main.async {
+            self.showviewWithAnimation(array: arr)
+
+            self.screenSize = UIScreen.main.bounds
+            self.screenWidth = self.screenSize.width
+            self.screenHeight = self.screenSize.height
+
+            
+           self.collection_View.register(UINib.init(nibName: "CustomCollectionViewCell", bundle: nil), forCellWithReuseIdentifier: self.reuseIdentifier)
+            
+            
+            
+            
+            var collViewHight : CGFloat?
+            if self.controllerArry.count > 3{
+                collViewHight = hasNotch() ? 320 : 250
+                    self.collection_View.isScrollEnabled = false
+            }else{
+                collViewHight = hasNotch() ? 205 : 150
+                self.collection_View.isScrollEnabled = false
+                
+            }
+            
+//
+//            if #available(iOS 13, *) {
+//                collViewHight = collViewHight! + 100.0
+//            }
+//
+//
+            
+            self.collection_View.frame = CGRect(x: self.frame.origin.x, y: (self.frame.size.height - (collViewHight)!), width: self.screenSize.width, height:  collViewHight!) //300 is self.view Height
+         
+            self.addSubview(self.collection_View)
+            self.arrOfShowData = arr
+            
+          // self.backgroundColor = UIColor.red
+            
+        }
+    }
+    
+    
+    func showviewWithAnimation(array : [TestDetails]){
+       
+        var viewHeight : CGFloat?
+        if controllerArry.count > 3{
+            viewHeight = hasNotch() ? 320 : 220
+        }else{
+            viewHeight = hasNotch() ? 205 : 105
+        }
+        
+        self.frame = CGRect(x: 0, y: UIScreen.main.bounds.height, width: UIScreen.main.bounds.width, height:  viewHeight!)
+        
+        UIView.animate(withDuration: 0.3) {
+            self.frame = CGRect(x: 0, y: UIScreen.main.bounds.height - viewHeight!, width: UIScreen.main.bounds.width, height:  viewHeight!)
+        }
+    }
+
+}//END
+
+
+    // MARK: - CollectionViewDataSource
+    
+    extension CustomCollectionView: UICollectionViewDataSource, UICollectionViewDelegate {
+        
+        func numberOfSections(in collectionView: UICollectionView) -> Int {
+            return 1
+        }
+        
+        func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+             return controllerArry.count
+        }
+        
+        internal func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+            let cell = collectionView.dequeueReusableCell(withReuseIdentifier: reuseIdentifier, for: indexPath) as! CustomCollectionViewCell
+            let controller = controllerArry[indexPath.row]
+            cell.lbl_Tittle.text = controller.name
+            cell.imgCustomForm.image =  UIImage(named: controller.image)
+            cell.frame.size.width = screenWidth / 5
+            cell.frame.size.height = screenWidth / 5
+           // cell.backgroundColor = .red
+            cell.clientChatbatch.isHidden = true
+            
+            if (badgeLabelIndex == indexPath.row ){
+                
+                ChatManager.shared.callbackClientBadge = {(count) in
+                    self.badgeCount = String(count)
+                    if Int(self.badgeCount)! > 0 {
+                        cell.clientChatbatch.text = "\(self.badgeCount)"
+                        cell.clientChatbatch.isHidden = false
+                    }else{
+                        cell.clientChatbatch.isHidden = true
+                    }
+                }
+                if Int(badgeCount)! > 0 {
+                    cell.clientChatbatch.text = "\(badgeCount)"
+                    cell.clientChatbatch.isHidden = false
+                }else{
+                    cell.clientChatbatch.isHidden = true
+                }
+                
+            }
+            return cell
+        }
+        
+        func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+
+            if self.onHideComplete != nil {
+                self.onHideComplete!(false , nil , controllerArry[indexPath.row].id )
+            }
+        }
+    }
+
+extension CustomCollectionView: UICollectionViewDelegateFlowLayout {
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        
+        let size = CGSize(width: ((UIScreen.main.bounds.size.width)/3.5), height: ((UIScreen.main.bounds.size.width)/4.0))
+        
+        return size
+    }
+
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, insetForSectionAt section: Int) -> UIEdgeInsets {
+        
+        if UIScreen.main.sizeType == .iPhone5 {
+            return UIEdgeInsets(top: 15, left: 20, bottom: 20, right: 0)
+        }
+        
+        return UIEdgeInsets(top: 10, left:30, bottom: 20, right: 0)
+    }
+    
+    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumInteritemSpacingForSectionAt section: Int) -> CGFloat {
+        return 10
+    }
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, minimumLineSpacingForSectionAt section: Int) -> CGFloat {
+        return 0
+    }
+}
+

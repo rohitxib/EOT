@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="14113" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" colorMatched="YES">
+    <device id="retina5_5" orientation="portrait">
+        <adaptation id="fullscreen"/>
+    </device>
+    <dependencies>
+        <deployment identifier="iOS"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="14088"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <placeholder placeholderIdentifier="IBFilesOwner" id="-1" userLabel="File's Owner"/>
+        <placeholder placeholderIdentifier="IBFirstResponder" id="-2" customClass="UIResponder"/>
+        <view contentMode="scaleToFill" id="GU3-78-Bdh" customClass="ASJTag">
+            <rect key="frame" x="0.0" y="0.0" width="105" height="24"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+            <subviews>
+                <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="cfm-QH-zbm">
+                    <rect key="frame" x="4" y="0.0" width="75" height="24"/>
+                    <fontDescription key="fontDescription" type="system" pointSize="15"/>
+                    <state key="normal" title="Tag">
+                        <color key="titleColor" red="1" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                    </state>
+                    <userDefinedRuntimeAttributes>
+                        <userDefinedRuntimeAttribute type="nil" keyPath="titleLabel.text"/>
+                    </userDefinedRuntimeAttributes>
+                    <connections>
+                        <action selector="tagTapped:" destination="GU3-78-Bdh" eventType="touchUpInside" id="0vn-3N-slt"/>
+                    </connections>
+                </button>
+                <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="wDi-6V-98w">
+                    <rect key="frame" x="79" y="0.0" width="22" height="24"/>
+                    <constraints>
+                        <constraint firstAttribute="height" constant="24" id="RJ2-nt-qpd"/>
+                        <constraint firstAttribute="width" constant="22" id="RMM-JV-yaA"/>
+                    </constraints>
+                    <state key="normal">
+                        <color key="titleColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
+                    </state>
+                    <connections>
+                        <action selector="deleteTapped:" destination="GU3-78-Bdh" eventType="touchUpInside" id="iZm-zJ-sUC"/>
+                    </connections>
+                </button>
+            </subviews>
+            <color key="backgroundColor" red="0.80000001190000003" green="0.80000001190000003" blue="0.80000001190000003" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+            <constraints>
+                <constraint firstAttribute="bottom" secondItem="cfm-QH-zbm" secondAttribute="bottom" id="1Tm-kW-LUt"/>
+                <constraint firstItem="wDi-6V-98w" firstAttribute="leading" secondItem="cfm-QH-zbm" secondAttribute="trailing" id="Ivb-1L-5WM"/>
+                <constraint firstAttribute="bottom" secondItem="wDi-6V-98w" secondAttribute="bottom" id="Pff-g1-Sju"/>
+                <constraint firstItem="cfm-QH-zbm" firstAttribute="top" secondItem="GU3-78-Bdh" secondAttribute="top" id="YFF-Mo-AOf"/>
+                <constraint firstItem="cfm-QH-zbm" firstAttribute="leading" secondItem="GU3-78-Bdh" secondAttribute="leading" constant="4" id="iI6-cW-AQU"/>
+                <constraint firstItem="wDi-6V-98w" firstAttribute="top" secondItem="GU3-78-Bdh" secondAttribute="top" id="t5w-Vb-8Bh"/>
+                <constraint firstItem="wDi-6V-98w" firstAttribute="leading" secondItem="cfm-QH-zbm" secondAttribute="trailing" id="ucl-Oa-0w5"/>
+                <constraint firstAttribute="trailing" secondItem="wDi-6V-98w" secondAttribute="trailing" constant="4" id="wpY-CP-Wd5"/>
+            </constraints>
+            <nil key="simulatedStatusBarMetrics"/>
+            <freeformSimulatedSizeMetrics key="simulatedDestinationMetrics"/>
+            <userDefinedRuntimeAttributes>
+                <userDefinedRuntimeAttribute type="color" keyPath="backgroundColor">
+                    <color key="value" red="0.0" green="0.0" blue="0.0" alpha="0.0" colorSpace="custom" customColorSpace="sRGB"/>
+                </userDefinedRuntimeAttribute>
+            </userDefinedRuntimeAttributes>
+            <connections>
+                <outlet property="deleteBtn_W" destination="RMM-JV-yaA" id="xpi-T0-CuB"/>
+                <outlet property="deleteButton" destination="wDi-6V-98w" id="lk9-SV-3rk"/>
+                <outlet property="tagButton" destination="cfm-QH-zbm" id="S9V-Tt-FB6"/>
+            </connections>
+            <point key="canvasLocation" x="322.5" y="237"/>
+        </view>
+    </objects>
+</document>

@@ -1,0 +1,119 @@
+//
+//  ExpenceAddVC.swift
+//  EyeOnTask
+//
+//  Created by Hemant's mac on 08/05/20.
+//  Copyright © 2020 Hemant. All rights reserved.
+//
+
+import UIKit
+
+class ExpenceAddVC: UIViewController, UINavigationControllerDelegate, UIImagePickerControllerDelegate {
+
+    @IBOutlet weak var btnRemove: UIButton!
+    var imagePicker = UIImagePickerController()
+    @IBOutlet weak var btnUplaod: UIButton!
+    
+    @IBOutlet weak var imgView: UIImageView!
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+
+        
+        self.title = "Add Expence"
+        // Do any additional setup after loading the view.
+    }
+    
+    @IBAction func btnRemoveImage(_ sender: Any) {
+        btnUplaod.alpha = 0.5
+        btnUplaod.isUserInteractionEnabled = false
+        btnRemove.isHidden = true
+        imgView.image = nil
+    }
+    
+    
+    @IBAction func btnTapGesture(_ sender: Any) {
+        //Create the AlertController and add Its action like button in Actionsheet
+               let actionSheetControllerIOS8: UIAlertController = UIAlertController(title: LanguageKey.please_select, message: nil, preferredStyle: .actionSheet)
+               
+               let cancelActionButton = UIAlertAction(title: LanguageKey.cancel , style: .cancel) { _ in
+                   // print("Cancel")
+               }
+               actionSheetControllerIOS8.addAction(cancelActionButton)
+               
+               
+               
+               let camera = UIAlertAction(title: LanguageKey.camera, style: .default)
+               { _ in
+                   if UIImagePickerController.isSourceTypeAvailable(.camera){
+                       self.imagePicker.delegate = self
+                       self.imagePicker.sourceType = .camera;
+                       self.imagePicker.allowsEditing = false
+                       APP_Delegate.showBackButtonText()
+                       self.present(self.imagePicker, animated: true, completion: {
+                           
+                       })
+                   }
+               }
+               
+               let gallery = UIAlertAction(title: LanguageKey.gallery, style: .default)
+               { _ in
+                   if UIImagePickerController.isSourceTypeAvailable(.photoLibrary){
+                       self.imagePicker.delegate = self
+                       self.imagePicker.sourceType = .photoLibrary;
+                       self.imagePicker.allowsEditing = false
+                       APP_Delegate.showBackButtonText()
+                       self.present(self.imagePicker, animated: true, completion: {
+                           
+                       })
+                   }
+               }
+               
+               actionSheetControllerIOS8.addAction(gallery)
+               actionSheetControllerIOS8.addAction(camera)
+               self.present(actionSheetControllerIOS8, animated: true, completion: nil)
+        
+    }
+    
+    
+    
+    @IBAction func btnUpload(_ sender: Any) {
+        
+       
+        
+        
+    }
+    
+    
+    public func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
+       let info = convertFromUIImagePickerControllerInfoKeyDictionary(info)
+        
+        if let image = info[convertFromUIImagePickerControllerInfoKey(UIImagePickerController.InfoKey.originalImage)]{
+            imgView.image = image as? UIImage
+            btnRemove.isHidden = false
+            btnUplaod.alpha = 1.0
+            btnUplaod.isUserInteractionEnabled = true
+        }
+        
+        self.dismiss(animated: true, completion: { () -> Void in
+            
+        })
+    }
+
+    
+    func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
+        picker.dismiss(animated: true, completion: nil)
+        
+        APP_Delegate.hideBackButtonText()
+    }
+    
+    fileprivate func convertFromUIImagePickerControllerInfoKeyDictionary(_ input: [UIImagePickerController.InfoKey: Any]) -> [String: Any] {
+        return Dictionary(uniqueKeysWithValues: input.map {key, value in (key.rawValue, value)})
+    }
+
+    // Helper function inserted by Swift 4.2 migrator.
+    fileprivate func convertFromUIImagePickerControllerInfoKey(_ input: UIImagePickerController.InfoKey) -> String {
+        return input.rawValue
+    }
+    
+}

@@ -1,0 +1,381 @@
+//
+//  PaymentVC.swift
+//  EyeOnTask
+//
+//  Created by Mac on 25/04/19.
+//  Copyright © 2019 Hemant. All rights reserved.
+//
+
+import UIKit
+import IQKeyboardManagerSwift
+class PaymentVC: UIViewController,OptionViewDelegate,UITextViewDelegate, UITextFieldDelegate {
+    
+    
+    
+    @IBOutlet weak var btnDoneBgView: UIButton!
+    @IBOutlet weak var btnCancelBgView: UIButton!
+    
+    @IBOutlet weak var btnSave: UIButton!
+    @IBOutlet weak var lblNote: UILabel!
+    @IBOutlet weak var lblPaidAmount: UILabel!
+    @IBOutlet weak var lblDueAmount: UILabel!
+    @IBOutlet weak var lblTotalAmount: UILabel!
+    @IBOutlet weak var dueAmntLbl: UILabel!
+    @IBOutlet weak var paidAmntLbl: UILabel!
+    @IBOutlet weak var totalAmntLbl: UILabel!
+    @IBOutlet weak var datePiker: UIDatePicker!
+    @IBOutlet weak var bigview: UIView!
+    
+    @IBOutlet weak var paymentTypeTxt: FloatLabelTextField!
+    @IBOutlet weak var paymentDateTxt: FloatLabelTextField!
+    
+    @IBOutlet weak var txtAmount: FloatLabelTextField!
+    @IBOutlet weak var scrollView: UIScrollView!
+    @IBOutlet weak var txtVwNote: UITextView!
+    
+    
+ var selectedIndex : Int?
+     var invoiceRes = InvoiceResponse()
+    var objOfUserJobListInDetail : UserJobList!
+    
+    let param = Params()
+    let cellReuseIdentifier = "cell"
+    var arrOfAccType = [UserAccType]()
+    var sltTxtField = UITextField()
+    var optionalVw : OptionalView?
+    var paymentTypes = [PaymentType.Cash, PaymentType.Cheque, PaymentType.CreditCard, PaymentType.DebitCard, PaymentType.DirectDeposit]
+    var selectedPayType : Int  = 0
+    var selectedDate : Date?
+    
+    //=======================
+    //MARK:- Initialise methods
+    //=======================
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        self.title = LanguageKey.title_payment
+        getInvoiceRecord()
+        setupMethod()
+        
+        btnDoneBgView.setTitle(LanguageKey.done, for: .normal)
+        btnCancelBgView.setTitle(LanguageKey.cancel, for: .normal)
+        btnSave.setTitle(LanguageKey.save_btn, for: .normal)
+        lblNote.text = LanguageKey.notes
+        lblPaidAmount.text = LanguageKey.paid_amt
+        lblDueAmount.text = LanguageKey.due_amt
+        lblTotalAmount.text = LanguageKey.total_inv_amt
+        
+        if let langCode = getCurrentSelectedLanguageCode() {
+            datePiker.locale = Locale(identifier: langCode)
+        }
+        
+        paymentDateTxt.placeholder = LanguageKey.pay_date
+        paymentTypeTxt.placeholder = LanguageKey.lable_pay_type
+        txtAmount.placeholder = LanguageKey.amt
+        txtAmount.text = roundOff(value: Double("0.0")!)
+        
+        IQKeyboardManager.shared.enable = true
+        
+        ActivityLog(module:Modules.job.rawValue , message: ActivityMessages.jobPayment)
+    }
+    
+    
+    func setupMethod() -> Void {
+        
+        //For By default payemnt select
+        paymentTypeTxt.text = paymentTypes[0].name
+        selectedPayType = paymentTypes[0].value
+        
+        //For By default date
+        selectedDate = Date()
+        let strDate = convertDateToString(date: selectedDate!, dateFormate: DateFormate.dd_MMM_yyyy)
+        paymentDateTxt.text = strDate
+    }
+   
+    
+
+    //=======================
+    //MARK:- Date Picker methods
+    //=======================
+    
+    @IBAction func saveDatePkrActn(_ sender: Any) {
+        hideDatePicker()
+        selectedDate = datePiker.date
+        let strDate = convertDateToString(date: datePiker.date, dateFormate: DateFormate.dd_MMM_yyyy)
+        paymentDateTxt.text = strDate
+    }
+
+    @IBAction func cancelDatePkr(_ sender: Any) {
+         hideDatePicker()
+    }
+
+    @IBAction func showDatePicker(_ sender: Any) {
+        self.bigview.isHidden = false
+        txtAmount.resignFirstResponder()
+        txtVwNote.resignFirstResponder()
+    }
+    
+    func hideDatePicker() -> Void {
+        self.bigview.isHidden = true
+    }
+    
+    //=======================
+    //MARK:- DropDown methods
+    //=======================
+    @IBAction func pymntTypDrpdwnBtn(_ sender: UIButton) {
+        if (sender.tag == 1) {
+            if(self.optionalVw == nil){
+                self.openDwopDown( txtField: self.paymentTypeTxt , arr: paymentTypes)
+            }else{
+                self.removeOptionalView()
+            }
+        }
+    }
+    
+    func removeOptionalView(){
+        if optionalVw != nil {
+            self.optionalVw?.removeFromSuperview()
+            self.optionalVw = nil
+        }
+    }
+    
+    func openDwopDown(txtField : UITextField , arr : [Any]) {
+        hideDatePicker()
+        txtVwNote.resignFirstResponder()
+        txtAmount.resignFirstResponder()
+        
+        if (optionalVw == nil){
+            self.optionalVw = OptionalView.instanceFromNib() as? OptionalView;
+            let sltTxtfldFrm = txtField.convert(txtField.bounds, from: self.view)
+            self.optionalVw?.setUpMethod(frame: CGRect(x: 10, y: ((-sltTxtfldFrm.origin.y) + sltTxtfldFrm.size.height), width: self.view.frame.size.width - 20, height: CGFloat(arr.count > 5 ? 150 : 38*arr.count)))
+            self.optionalVw?.delegate = self
+            self.view.addSubview( self.optionalVw!)
+            self.optionalVw?.removeOptionVwCallback = {(isRemove : Bool) -> Void in
+                self.removeOptionalView()
+            }
+        }else{
+            DispatchQueue.main.async {
+                self.removeOptionalView()
+            }
+        }
+    }
+    
+    //==========================
+    //MARK:- Other Methods
+    //==========================
+    
+    
+    
+
+    @IBAction func saveBtnActn(_ sender: Any) {
+        if selectedPayType != 0 {
+            if txtAmount.text?.count != 0 && Double(txtAmount.text!)! != 0 {
+                getInvoicePaymentRecieve()
+            }else{
+                 ShowError(message: AlertMessage.enterAmount, controller: windowController)
+            }
+        }else{
+            ShowError(message: AlertMessage.nonPaymentType, controller: windowController)
+        }
+    }
+    
+    //=====================================
+    // MARK:- Optional view Detegate
+    //=====================================
+    func optionView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        return paymentTypes.count
+    }
+    
+    func optionView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        var cell = tableView.dequeueReusableCell(withIdentifier: cellReuseIdentifier)
+        if(cell == nil){
+            cell = UITableViewCell.init(style: .default, reuseIdentifier: cellReuseIdentifier)
+        }
+
+        cell!.textLabel!.font = UIFont.systemFont(ofSize: 13.0)
+        cell?.backgroundColor = .clear
+        cell?.textLabel?.textColor = UIColor.darkGray
+        cell?.textLabel?.text = paymentTypes[indexPath.row].name
+        
+      if paymentTypes[indexPath.row].value == selectedPayType {
+        cell!.accessoryType = UITableViewCell.AccessoryType.checkmark
+    }else{
+        cell!.accessoryType = UITableViewCell.AccessoryType.none
+        }
+        
+        return cell!
+        
+    }
+    
+    func optionView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        paymentTypeTxt.text = paymentTypes[indexPath.row].name
+        selectedPayType = paymentTypes[indexPath.row].value
+        self.removeOptionalView()
+    }
+    
+    func optionView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 38.0
+    }
+    
+   
+    //=====================================
+    // MARK:- TextField and Textview Detegates
+    //=====================================
+    func textFieldDidBeginEditing(_ textField: UITextField) {
+       hideDatePicker()
+     
+        if (textField == txtAmount){
+            let number = Double(textField.text!)
+            if number == 0 {
+                textField.text = ""
+            }
+        }
+    }
+    
+
+    
+    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
+        
+        let result = (textField.text as NSString?)?.replacingCharacters(in: range, with: string) ?? string
+        
+        if(textField == txtAmount){
+            if (result.containsAmountCharactor){
+                return false
+            }
+            
+            let insensitiveCount = result.lowercased().filter{ $0 == Character(String(".").lowercased())}
+            if insensitiveCount.count > 1 {
+                return false
+            }
+            
+            
+            let minusCount = result.lowercased().filter{ $0 == Character(String("-").lowercased())}
+            if minusCount.count > 0  {
+                if minusCount.count == 1 {
+                    if !result.hasPrefix("-"){
+                        return false
+                    }
+                }else{
+                    return false
+                }
+            }
+            
+            let aSet = NSCharacterSet(charactersIn:"0123456789-.").inverted
+            let compSepByCharInSet = string.components(separatedBy: aSet)
+            let numberFiltered = compSepByCharInSet.joined(separator: "")
+            return string == numberFiltered
+        }
+        
+        return true
+    }
+    
+   
+    
+    
+    func textFieldDidEndEditing(_ textField: UITextField) {
+        if textField == txtAmount {
+            if txtAmount.text?.count == 0 {
+                txtAmount.text = roundOff(value:Double("0.00")!)
+            }else{
+                txtAmount.text = roundOff(value: Double(txtAmount.text!)!)
+            }
+        }
+    }
+
+    
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        hideDatePicker()
+    }
+    
+    //======================================================
+    // MARK:- Get Invoice Data
+    //======================================================
+    func getInvoiceRecord() {
+        
+        showLoader()
+        let param = Params()
+        param.jobId = objOfUserJobListInDetail?.jobId
+        param.invId = ""
+        
+        serverCommunicator(url: Service.getInvoiceDetail, param: param.toDictionary) { (response, success) in
+            killLoader()
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(InvoiceResponse.self, from: response as! Data) {
+                    
+                    if decodedData.success == true{
+                     
+                         self.invoiceRes = decodedData
+                        
+                        let total = Double(self.invoiceRes.data!.total ?? roundOff(value:Double("0.00")!) )
+                        let paid = Double(self.invoiceRes.data!.paid ?? roundOff(value:Double("0.00")!) )
+                        let due : Double = (total ?? 0.0) - (paid ?? 0.0)
+                        let currency = self.invoiceRes.data!.curSym ?? ""
+                        
+                        DispatchQueue.main.async{
+                            self.totalAmntLbl.text = "\(currency)" + roundOff(value: total!)
+                            self.paidAmntLbl.text = "\(currency)" + roundOff(value: paid!)
+                            self.dueAmntLbl.text = "\(currency)" + roundOff(value: due)
+                        }
+                    }else{
+                        ShowError(message:  getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                    }
+                }else{
+                    
+                    ShowError(message: AlertMessage.formatProblem, controller: windowController)
+                }
+            }else{
+                //ShowError(message: "Please try again!", controller: windowController)
+            }
+        }
+    }
+    
+    
+    func getInvoicePaymentRecieve() {
+
+        
+        if !isHaveNetowork(){
+             ShowError(message: AlertMessage.networkIssue, controller: windowController)
+            return
+        }
+        
+        
+        showLoader()
+        let param = Params()
+        param.invId = self.invoiceRes.data!.invId
+        param.amt = txtAmount.text!
+        param.ref =  self.invoiceRes.data!.nm
+        param.paytype = String(selectedPayType)
+        param.paydate  = convertDateToStringForServer(date: selectedDate!, dateFormate: DateFormate.yyyy_MM_dd)
+        param.note = trimString(string: txtVwNote.text!)
+        
+        serverCommunicator(url: Service.invoicePaymentRecieve, param: param.toDictionary) { (response, success) in
+            killLoader()
+            if(success){
+              //  let decoder = JSONDecoder()
+                ShowError(message: AlertMessage.paymentRecieved, controller: windowController)
+               
+                DispatchQueue.main.async {
+                    let total = Double(self.invoiceRes.data!.total ?? roundOff(value:Double("0.00")!))
+                    var paid = Double(self.invoiceRes.data!.paid ?? roundOff(value:Double("0.00")!))
+                    paid = paid! + Double(self.txtAmount.text!)!
+                    let due : Double = total! - paid!
+                    let currency = self.invoiceRes.data!.curSym ?? ""
+                    
+                    self.invoiceRes.data!.paid = String(paid!)
+                    self.invoiceRes.data!.total = String(total!)
+                    
+                    self.dueAmntLbl.text = "\(currency)" + roundOff(value: due)
+                    self.paidAmntLbl.text = "\(currency)" +  roundOff(value: paid!)
+                    self.txtVwNote.text = ""
+                    self.txtAmount.text =  roundOff(value:Double("0.00")!)
+                }
+            }else{
+                //ShowError(message: "Please try again!", controller: windowController)
+            }
+        }
+    }
+    
+}
+
+
+

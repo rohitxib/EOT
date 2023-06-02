@@ -1,0 +1,30 @@
+//
+//  TestRes.swift
+//  EyeOnTask
+//
+//  Created by mac on 07/09/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+
+import UIKit
+
+class TestRes: Codable {
+    var success: Bool?
+    var message: String?
+    var data: [TestDetails]
+    var count : String?
+    var statusCode : String?
+}
+class TestDetails : Codable {
+    var frmId: String?
+    var jtId: String?
+    var frmnm: String?
+    var event : String?
+    var tab: String?
+    var mandatory : String?
+    var totalQues : String?
+    var status_code : String?
+    var jobid : String?
+
+}
+

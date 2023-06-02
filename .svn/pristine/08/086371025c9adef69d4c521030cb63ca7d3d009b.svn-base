@@ -1,0 +1,851 @@
+//
+//  InvoiceVC.swift
+//  EyeOnTask
+//
+//  Created by Apple on 11/05/18.
+//  Copyright © 2018 Hemant. All rights reserved.
+//
+import UIKit
+import JJFloatingActionButton
+
+class InvoiceVC: UIViewController,UITableViewDelegate,UITableViewDataSource,UITextFieldDelegate {
+    
+    
+    
+    @IBOutlet weak var btnPayPopup: UIButton!
+    
+    @IBOutlet weak var txtPayFullpop: UITextField!
+    
+    @IBOutlet weak var txtPayPartialpop: UITextField!
+    
+    @IBOutlet weak var lblPyPrtlPopUp: UILabel!
+    @IBOutlet weak var lblPyFullPopUp: UILabel!
+    @IBOutlet weak var lblDueDate: UILabel!
+    @IBOutlet weak var lblInvoiceDate: UILabel!
+    @IBOutlet weak var btnPay: UIButton!
+    
+    @IBOutlet weak var alertMessage: UILabel!
+    @IBOutlet weak var topView: UIView!
+    @IBOutlet weak var listItemView: UIView!
+    
+    @IBOutlet weak var H_address: NSLayoutConstraint!
+    
+    @IBOutlet weak var H_Name: NSLayoutConstraint!
+    @IBOutlet weak var H_gstnumber: NSLayoutConstraint!
+    
+    
+    @IBOutlet weak var alertLogo: UILabel!
+    @IBOutlet weak var backGroubdView: UIView!
+    @IBOutlet weak var deleteCellBtn: UIButton!
+    @IBOutlet var popUpView: UIView!
+    @IBOutlet weak var viewDateDtl: UIView!
+    @IBOutlet weak var tableView: UITableView!
+    @IBOutlet weak var arryCount: UILabel!
+    @IBOutlet weak var deleteCellImg: UIImageView!
+    @IBOutlet weak var payPartialAmnt: UITextField!
+    
+    @IBOutlet weak var height_HeaderView: NSLayoutConstraint!
+    @IBOutlet weak var createdDateLbl: UILabel!
+    @IBOutlet weak var dueDateLbl: UILabel!
+    @IBOutlet weak var amountLbl: UILabel!
+    @IBOutlet weak var nameLbl: UILabel!
+    @IBOutlet weak var compninameLbl: UILabel!
+    @IBOutlet weak var adrsLbl: UILabel!
+    var displayMsg = ""
+    @IBOutlet weak var lblGst: UILabel!
+    let loc_listItem = LanguageKey.list_item
+    var refreshControl = UIRefreshControl()
+    var isDelete : Bool!
+    var invoiceRes = InvoiceResponse()
+    var selectedRows:[Int] = []
+    var objOfUserJobListInDetail : UserJobList!
+    var chatConPosition : Int = 0
+    var selectedCell : IndexPath? = nil
+    var currency = ""
+    var isDisable = true
+    
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        
+        self.title = LanguageKey.title_invoice
+        self.lblDueDate.text = LanguageKey.due_date
+        self.lblInvoiceDate.text = LanguageKey.invoice_date
+        
+        let actionButton = JJFloatingActionButton()
+        actionButton.buttonAnimationConfiguration = .rotation(toAngle: 0.0)
+        actionButton.buttonImage = UIImage(named: "FloatIcon")
+        actionButton.itemAnimationConfiguration = .slideIn(withInterItemSpacing: 20)
+        actionButton.buttonColor  = UIColor(red: 55.0/255.0, green: 132.0/255.0, blue: 141.0/255.0, alpha: 1.0)
+    
+        isDisable = compPermissionVisible(permission: compPermission.isItemEnable)
+
+        if isDisable {
+            actionButton.addItem(title: LanguageKey.add_new_item , image: UIImage(named: "floatNewitem")?.withRenderingMode(.alwaysOriginal)) { item in
+                
+                if self.invoiceRes.data ==  nil {
+                    ShowAlert(title: LanguageKey.dialog_error_title, message: LanguageKey.offline_feature_alert, controller: windowController, cancelButton: nil, okButton: LanguageKey.ok as NSString, style: .alert) { (cancel, ok) in
+                        if ok  {
+                            self.tabBarController?.selectedIndex = 0
+                        }
+                    }
+                    return
+                }
+                
+                ActivityLog(module:Modules.invoice.rawValue , message: ActivityMessages.jobInvoiceAddNewProduct)
+                self.navigationItem.backBarButtonItem = UIBarButtonItem(title:nil, style: .plain, target: nil, action: nil)
+                self.performSegue(withIdentifier: "add", sender: nil)
+            }
+        }
+       
+
+        actionButton.addItem(title: LanguageKey.print_invoice, image: UIImage(named: "floatPrint")?.withRenderingMode(.alwaysOriginal)) { item in
+            // do something
+            
+            ActivityLog(module:Modules.invoice.rawValue , message: ActivityMessages.jobInvoicePrint)
+            let storyboard = UIStoryboard(name: "Invoice", bundle: nil)
+            let vc = storyboard.instantiateViewController(withIdentifier: "pdfvc") as! ShowPdfVC
+            vc.invoiceid = (self.invoiceRes.data?.invId)!
+            vc.invoiceCode = (self.invoiceRes.data?.code)!
+            self.navigationItem.backBarButtonItem = UIBarButtonItem(title:nil, style: .plain, target: nil, action: nil)
+            self.navigationController!.pushViewController(vc, animated: true)
+        }
+
+        actionButton.addItem(title: LanguageKey.email_invoice, image: UIImage(named: "floatEmail")) { item in
+            // do something
+            ActivityLog(module:Modules.invoice.rawValue , message: ActivityMessages.jobInvoiceEmail)
+            let storyboard = UIStoryboard(name: "Invoice", bundle: nil)
+            let vc = storyboard.instantiateViewController(withIdentifier: "EMAILINVOICE") as! EmailInvoiceVC
+            vc.invoiceid = (self.invoiceRes.data?.invId)!
+            self.navigationItem.backBarButtonItem = UIBarButtonItem(title:nil, style: .plain, target: nil, action: nil)
+            self.navigationController!.pushViewController(vc, animated: true)
+        }
+
+        for button in actionButton.items { // change button color of items
+            button.buttonColor = UIColor(red: 55.0/255.0, green: 132.0/255.0, blue: 141.0/255.0, alpha: 1.0)
+        }
+       
+       view.addSubview(actionButton)
+
+        actionButton.translatesAutoresizingMaskIntoConstraints = false
+        if #available(iOS 11.0, *) {
+            actionButton.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -30).isActive = true
+        } else {
+            // Fallback on earlier versions
+        }
+        if #available(iOS 11.0, *) {
+            actionButton.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor, constant: -30).isActive = true
+        } else {
+            // Fallback on earlier versions
+        }
+   
+        //  actionButton.display(inViewController: self)
+
+        
+       // self.height_HeaderView.constant = 140.0
+        
+        // createdDateLbl.text = schStartDate(timeInterval: (stu?.data?.createdate!)!)
+        // self.createdDateLbl.text = dateFormateWithMonthandDayAndYears(timeInterval: ((stu?.data?.duedate)!))
+        
+        //-----------text height scroll method -------------
+        
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = 165
+    
+        backGroubdView.isHidden = true
+        
+        if isDisable == false {
+            deleteCellBtn.isHidden = true
+            deleteCellImg.isHidden = true
+        }
+        
+        
+        
+        self.viewDateDtl.layer.cornerRadius = 20
+        self.viewDateDtl.layer.shadowColor = UIColor.black.cgColor
+        self.viewDateDtl.layer.shadowOpacity = 0.5
+        self.viewDateDtl.layer.shadowRadius = 7
+        
+        refreshControl.attributedTitle = NSAttributedString(string: " ")
+        refreshControl.addTarget(self, action: #selector(refreshControllerMethod), for: UIControl.Event.valueChanged)
+        tableView.addSubview(refreshControl) // not required when using UITableViewController
+        
+        
+        self.setupInvoiceResponseModel()
+        
+        ActivityLog(module:Modules.invoice.rawValue , message: ActivityMessages.jobInvoice)
+    }
+    
+    @objc func refreshControllerMethod() {
+        getInvoiceRecord()
+    }
+    
+    override func viewWillAppear(_ animated: Bool) {
+        
+        if self.invoiceRes.data != nil && self.invoiceRes.data!.itemData!.count == 0{
+            let data =  self.invoiceRes.data
+            self.amountLbl.text = roundOff(value: Double(data!.total ?? "0.0")!)
+            showNoDataAlert()
+        }else{
+            hideNoDataAlert()
+        }
+    }
+    
+    //---------------------------- callback ---------------------------------
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == "add" {
+            if let addVC = segue.destination as? ListItemVC {
+                addVC.isAdd = true
+                addVC.invoiceRes = invoiceRes
+                addVC.jobDetail = objOfUserJobListInDetail
+                addVC.callbackDetailVC =  {(isUpdate : Bool ) -> Void in
+
+                    if isUpdate {
+                        self.displayMsg = AlertMessage.add
+                        self.updateInvoiceOnServer()
+                    }else{
+                        DispatchQueue.main.async {
+                            self.tableView.reloadData()
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Text Field Delegate ==============
+    
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool
+    {
+        payPartialAmnt.resignFirstResponder()
+        return true
+    }
+    
+    // Table View Delegate ==============
+    
+    func numberOfSections(in tableView: UITableView) -> Int {
+        return 2
+    }
+    
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        if section == 1 {
+            
+            if let items = self.invoiceRes.data?.shippingItem{
+                if items.count > 0 {
+                    return 20.0
+                }else {
+                    return 0.0
+                }
+            }else{
+                return 0.0
+            }
+        }else{
+            return 0.0
+        }
+        
+    }
+    
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        
+        if section == 0 {
+            return self.invoiceRes.data?.itemData! == nil ? 0 :  (self.invoiceRes.data?.itemData?.count)!
+        }else{
+            return self.invoiceRes.data?.shippingItem! == nil ? 0 :  (self.invoiceRes.data?.shippingItem?.count)!
+        }
+    }
+    
+    func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        return ""
+    }
+    
+    
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        if indexPath.section == 0 {
+            let cell = tableView.dequeueReusableCell(withIdentifier: "cell",for: indexPath) as! InvoiceCell
+            let aar = self.invoiceRes.data?.itemData?[indexPath.row]
+            if selectedCell == indexPath {
+                cell.view.backgroundColor = UIColor.init(red: 236.0/255.0, green: 244.0/255.0, blue: 245.0/255.0, alpha: 1.0)
+            }else{
+                cell.view.backgroundColor = UIColor.white
+            }
+            
+            var myrate = aar!.rate
+            if (myrate?.count)! > 0 {
+                myrate = roundOff(value: Double(myrate!)!)
+            }else{
+                myrate = roundOff(value:Double("0.00")!)
+            }
+            
+            
+            var mydiscount = aar!.discount
+            if (mydiscount?.count)! > 0 {
+                mydiscount = roundOff(value: Double(mydiscount!)!)
+            }else{
+                mydiscount = roundOff(value:Double("0.00")!)
+            }
+            
+            
+            
+            cell.lblName.text = aar?.inm?.capitalized
+            
+            
+            let qty = LanguageKey.qty
+            
+            cell.qtyLbl.text = "\(qty): " + aar!.qty!
+            // cell.discountLbl.text = "ITC " + mydiscount! + " %"
+            cell.amountLbl.text = (aar?.amount)!
+            
+            if isDisable == false {
+                cell.btnTap.isHidden = true
+                cell.checkMarkBtn.isHidden = true
+                cell.X_lblName.constant = 17.0
+                cell.X_lblQty.constant = 17.0
+            }else{
+                if selectedRows.contains(indexPath.row){
+                    cell.checkMarkBtn.isSelected = true
+                }else{
+                    cell.checkMarkBtn.isSelected = false
+                }
+                cell.btnTap.addTarget(self, action: #selector(buttonTapped( sender: )), for: .touchUpInside)
+                cell.btnTap.tag = indexPath.row
+            }
+            
+            return cell
+        }else{
+            let cell = tableView.dequeueReusableCell(withIdentifier: "shipCell",for: indexPath) as! ShippingItemCell
+            let shippingItem = self.invoiceRes.data?.shippingItem?[indexPath.row]
+            cell.itemName.text = shippingItem?.inm
+            
+            var myrate = shippingItem!.rate
+            if (myrate?.count)! > 0 {
+                myrate = roundOff(value: Double((myrate)!)!)
+            }else{
+                myrate = roundOff(value:Double("0.00")!)
+            }
+            cell.lblPrice.text = myrate
+            
+            cell.selectionStyle = .none
+            cell.isUserInteractionEnabled = false
+            return cell
+        }
+    }
+    
+    
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        
+        if indexPath.section == 1 {
+            return
+        }
+        
+        
+        ActivityLog(module:Modules.invoice.rawValue , message: ActivityMessages.jobInvoiceProductUpdate)
+        
+        let itemDetailVC = storyboard?.instantiateViewController(withIdentifier: "ListItemVC") as! ListItemVC
+        if (selectedCell != nil) {
+            
+            //If selected cell exist on visible indexpaths
+            let isExist = tableView.indexPathsForVisibleRows?.contains(selectedCell!)
+            if isExist!{
+                let cellPrevious = tableView.cellForRow(at: selectedCell!) as! InvoiceCell
+                cellPrevious.view.backgroundColor = .white
+            }
+        }
+        
+        let cell = tableView.cellForRow(at: indexPath) as! InvoiceCell
+        cell.view.backgroundColor = UIColor.init(red: 236.0/255.0, green: 244.0/255.0, blue: 245.0/255.0, alpha: 1.0)
+        self.selectedCell = indexPath
+        
+        itemDetailVC.selectedIndex = indexPath.row
+        itemDetailVC.invoiceRes = invoiceRes
+        itemDetailVC.isAdd = false
+        itemDetailVC.callbackDetailVC =  {(student : Bool) -> Void in
+            showLoader()
+            self.displayMsg = AlertMessage.updated
+            self.updateInvoiceOnServer()
+        }
+        
+        self.navigationController?.pushViewController(itemDetailVC, animated: true)
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        
+    }
+    
+    @IBAction func cancelBtn(_ sender: Any) {
+        popUpView.removeFromSuperview()
+        backGroubdView.isHidden = true
+    }
+    
+    @IBAction func payBtnAcction(_ sender: Any) {
+        
+        backGroubdView.isHidden = false
+        view.addSubview(popUpView)
+        popUpView.center = CGPoint(x: backGroubdView.frame.width / 2, y: backGroubdView.frame.height / 4.2)
+    }
+    
+    @objc func buttonTapped(sender: UIButton) {
+        
+        if self.selectedRows.contains(sender.tag){
+            self.selectedRows.remove(at: self.selectedRows.firstIndex(of: sender.tag)!)
+        }else  {
+            self.selectedRows.append(sender.tag)
+        }
+        
+        if  selectedRows.count == 0 {
+            deleteCellImg.image = UIImage(named: "trash")
+        } else{
+            deleteCellImg.image = UIImage(named: "trash (2)")
+        }
+        
+        DispatchQueue.main.async{
+            self.tableView.reloadData()
+        }
+        
+    }
+    
+    @IBAction func deleteCellBtnActn(_ sender: UIButton) {
+        
+        if self.selectedRows.count == 0 {
+            return
+        }
+        if (self.selectedRows.count == self.invoiceRes.data?.itemData?.count){
+                   //showToast(message: "You can't delete these items completely");
+            ShowAlert(title: nil , message: AlertMessage.itemRemoveAllItem, controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert) { (_,_) in }
+            
+            return
+        }
+        ShowAlert(title:LanguageKey.confirmation , message: AlertMessage.itemRemove, controller: windowController, cancelButton: LanguageKey.cancel as NSString, okButton: LanguageKey.remove as NSString, style: .alert) { (cancel, remove) in
+            if remove {
+            
+                var itemIndexPath: [IndexPath] = []
+              
+                self.selectedRows = self.selectedRows.sorted(by: >)
+                
+                for index in  self.selectedRows  {
+                    let indexpth = IndexPath(row:index , section: 0)
+                    itemIndexPath.append(indexpth)
+                    self.invoiceRes.data?.itemData?.remove(at: index)
+                }
+                
+                
+                self.deleteCellImg.image = UIImage(named: "trash")
+                self.tableView.beginUpdates()
+                self.tableView.deleteRows(at: itemIndexPath, with: .fade)
+                self.tableView.endUpdates()
+                self.selectedRows.removeAll()
+                self.tableView.reloadData()
+                
+                //print(invoiceRes.data)
+                 self.displayMsg = AlertMessage.delete
+                self.updateInvoiceOnServer()
+            }
+        }
+    }
+    
+  
+    //======================================================
+    // MARK: Get Invoice Data
+    //======================================================
+    func getInvoiceRecord() {
+
+        if !isHaveNetowork() {
+            ShowError(message: AlertMessage.checkNetwork, controller: windowController)
+            if self.refreshControl.isRefreshing {
+                self.refreshControl.endRefreshing()
+            }
+            return
+        }
+        
+        
+       // showLoader()
+        let param = Params()
+        param.jobId = objOfUserJobListInDetail?.jobId
+        param.invId = ""
+       
+        serverCommunicator(url: Service.getInvoiceDetail, param: param.toDictionary) { (response, success) in
+            killLoader()
+            DispatchQueue.main.async {
+                if self.refreshControl.isRefreshing {
+                   self.refreshControl.endRefreshing()
+                }
+            }
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(InvoiceResponse.self, from: response as! Data) {
+                   
+                    if decodedData.success == true{
+                        self.invoiceRes = decodedData
+                        taxCalculationType = (self.invoiceRes.data?.taxCalculationType)!
+                        
+                      self.setupInvoiceResponseModel()
+                    }else{
+                        if (decodedData.statusCode != nil) && decodedData.statusCode == "401" {
+                            ShowAlert(title:  getServerMsgFromLanguageJson(key: decodedData.message!) , message:"" , controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                if (Ok){
+                                    DispatchQueue.main.async {
+                                        (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                    }
+                                }
+                            })
+                        }else{
+                            ShowError(message:  getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+                        self.showNoDataAlert()
+                    }
+                }else{
+                    ShowError(message: AlertMessage.formatProblem, controller: windowController)
+                }
+            }else{
+                //ShowError(message: "Please try again!", controller: windowController)
+            }
+        }
+     }
+    
+    
+    func setupInvoiceResponseModel() -> Void {
+       
+        
+        if let data =  self.invoiceRes.data{
+            
+            if let address = self.invoiceRes.data?.inv_client_address {
+                if address == "" {
+                    DispatchQueue.main.async {
+                        self.nameLbl.text = ""
+                        self.compninameLbl.text = ""
+                        self.adrsLbl.text = ""
+                        self.lblGst.text = ""
+                        
+                        self.H_Name.constant = 0
+                        self.H_gstnumber.constant = 0
+                        self.H_address.constant = 0
+                    }
+                }else{
+                    self.setAddress(addressString: address)
+                }
+            }
+            
+            
+            for item in (self.invoiceRes.data?.itemData)! {
+                var tax : Double = 0.0
+                for tx in item.tax! {
+                    tax = tax + Double((tx.rate == "") ? roundOff(value:Double("0.00")!) : tx.rate!)!
+                }
+                let qty = (item.qty == "") ? "0" : item.qty!
+                let rate = (item.rate == "") ? "0.0" : item.rate!
+                let discount = (item.discount == "") ? "0.0" : item.discount!
+                
+                
+                let totalAmount = calculateAmount(quantity: Double(qty)!, rate: Double(rate)!, tax: tax, discount: Double(discount)!)
+                item.amount = roundOff(value: totalAmount)
+                
+                let taxAmount = calculateTaxAmount(rate: Double(rate)!, qty: Int(qty)!, taxRateInPercentage: tax)
+
+                item.taxamnt = roundOff(value: taxAmount)
+            }
+            
+            DispatchQueue.main.async{
+                self.amountLbl.text = roundOff(value: Double(data.total ?? "0.0")!)
+                self.dueDateLbl.text = convertTimestampToDateForPayment(timeInterval: (data.duedate)!)
+                self.createdDateLbl.text = convertTimestampToDateForPayment(timeInterval: (data.invDate)!)
+                self.arryCount.text = "\(self.loc_listItem) \(data.itemData!.count)"
+                self.currency = data.curSym!
+                
+                if self.invoiceRes.data!.itemData!.count == 0{
+                    self.showNoDataAlert()
+                }else{
+                    self.hideNoDataAlert()
+                }
+                self.tableView.reloadData()
+            }
+        }else{
+            self.showNoDataAlert()
+        }
+        
+    }
+    
+    
+    func setAddress(addressString : String) -> Void {
+        let decoder = JSONDecoder()
+        let data = addressString.data(using: .utf8)!
+        do {
+            if (try JSONSerialization.jsonObject(with: data, options: []) as? [String:Any]) != nil
+            {
+                if let addressData = try? decoder.decode(addressRes.self, from: data) {
+                    
+                    
+                    var address = ""
+                    
+                    if (addressData.city != nil) && (addressData.city != "") {
+                        address = addressData.city!
+                    }
+                    
+                    if (addressData.country != nil) && (addressData.country != "") {
+                        if address.count > 0 {
+                            address =  address + " \(addressData.country!)"
+                        }else{
+                            address = addressData.country!
+                        }
+                    }
+                    
+                    DispatchQueue.main.async {
+                        
+                        if let name = addressData.nm{
+                            
+                            if name.count > 0 {
+                                self.nameLbl.text = name.capitalizingFirstLetter()
+                            }else{
+                                self.H_Name.constant = 0.0
+                            }
+                        }else{
+                            self.nameLbl.text = "Unknown"
+                        }
+                        
+                        if (addressData.adr != nil) && (addressData.adr != "") {
+                            self.compninameLbl.text = addressData.adr!
+                        }else{
+                            self.H_address.constant = 0.0
+                        }
+                        
+                        
+                        let attributedString = NSMutableAttributedString(string: address.capitalizingFirstLetter())
+                        
+                        // *** Create instance of `NSMutableParagraphStyle`
+                        let paragraphStyle = NSMutableParagraphStyle()
+                        
+                        // *** set LineSpacing property in points ***
+                        paragraphStyle.lineSpacing = 6 // Whatever line spacing you want in points
+                        
+                        // *** Apply attribute to string ***
+                        attributedString.addAttribute(NSAttributedString.Key.paragraphStyle, value:paragraphStyle, range:NSMakeRange(0, attributedString.length))
+                        
+                        // *** Set Attributed String to your label ***
+                        self.adrsLbl.attributedText = attributedString
+                        
+                        
+                       // self.adrsLbl.text = address.capitalizingFirstLetter()
+                       // self.adrsLbl.text = "312 orbitmall near by teleperformance indore, pincode - 452001"
+                        
+                        if let gst = addressData.gst{
+                            if gst.count > 0 {
+                                self.lblGst.text = gst
+                            }else{
+                                self.H_gstnumber.constant = 0.0
+                            }
+                        }else{
+                             self.H_gstnumber.constant = 0.0
+                        }
+                        
+                        
+                        
+                    }
+                }
+                
+            } else {
+               // print("bad json")
+                DispatchQueue.main.async {
+                    self.nameLbl.text = ""
+                    self.compninameLbl.text = ""
+                    self.adrsLbl.text = ""
+                }
+            }
+        } catch _ as NSError {
+            DispatchQueue.main.async {
+                self.nameLbl.text = ""
+                self.compninameLbl.text = ""
+                self.adrsLbl.text = ""
+            }
+        }
+    }
+    
+    
+    func showNoDataAlert() -> Void {
+        DispatchQueue.main.async{
+            //self.topView.isHidden = true
+            self.listItemView.isHidden = true
+            self.alertMessage.isHidden = false
+            self.alertLogo.isHidden = false
+            self.alertMessage.text =  AlertMessage.noneitems
+        }
+    }
+    
+    func hideNoDataAlert() -> Void {
+        DispatchQueue.main.async{
+            //self.topView.isHidden = false
+            self.listItemView.isHidden = false
+            self.alertMessage.isHidden = true
+            self.alertLogo.isHidden = true
+            self.alertMessage.text =  AlertMessage.noneitems
+        }
+    }
+    
+    
+     func updateInvoiceOnServer() {
+
+        showLoader()
+        
+        var totalAmount : Double = 0.0
+        //Response model change for request param for ItemData
+        var editedItemData = [itemData] ()
+        
+        if let itemDatas = invoiceRes.data?.itemData{
+            for item in itemDatas {
+                let data = itemData()
+                data.itemId = item.itemId
+                data.jobId = objOfUserJobListInDetail?.jobId
+                data.rate = item.rate
+                data.qty = item.qty
+                data.discount = item.discount
+                data.isGroup = "0"
+                data.inm = item.inm
+                data.des = item.des
+                data.type = item.type
+                totalAmount = totalAmount + Double(item.amount!)! // make total amount for set totalAmount in request
+                var taxDt : [taxData] = []
+                for tax in item.tax! {
+                    let tx = taxData()
+                    tx.taxId = tax.taxId
+                    tx.txRate = tax.rate != nil ? tax.rate : tax.txRate
+                    taxDt.append(tx)
+                }
+                data.tax = taxDt /// currently this field is blank
+                data.hsncode = item.hsncode
+                data.pno = item.pno
+                data.taxamnt = item.taxamnt
+                data.unit = item.unit
+                data.supplierCost = item.supplierCost
+                data.jtId = item.jtId
+                editedItemData.append(data)
+            }
+        }
+        
+        
+        if let newItems = invoiceRes.data?.newItem{
+            for item in newItems {
+                totalAmount = totalAmount + Double(item.amount!)!
+            }
+        }
+        
+        
+        if let shippingItem = invoiceRes.data?.shippingItem{
+            for item in shippingItem {
+                
+                let data = newItemData()
+                data.itemId = item.itemId
+                data.inm = item.inm
+                data.qty = "0"
+                data.rate = item.rate
+                data.supplierCost = "0"
+                data.discount = "0"
+                data.itype = "2" //2 itype for Shipping items
+                data.isItemOrTitle = "1"
+                data.taxamnt = "0"
+                
+                totalAmount = totalAmount + Double(item.rate!)!
+                
+                if invoiceRes.data?.newItem != nil{
+                    invoiceRes.data?.newItem?.append(data)
+                }else{
+                    invoiceRes.data?.newItem = [newItemData]()
+                    invoiceRes.data?.newItem?.append(data)
+                }
+            }
+        }
+        
+        
+        
+        let  param  = Params()
+        param.invId = invoiceRes.data?.invId
+        param.jobId = objOfUserJobListInDetail?.jobId
+        param.cltId =  invoiceRes.data?.cltId
+        param.nm = invoiceRes.data?.nm
+        param.pro = invoiceRes.data?.pro
+        param.compId = invoiceRes.data?.compId
+        param.invType = invoiceRes.data?.invType
+        param.adr = invoiceRes.data?.inv_client_address
+        param.discount = invoiceRes.data?.discount
+        param.total = String(totalAmount)
+        param.note = invoiceRes.data?.note
+        param.paid = invoiceRes.data?.paid
+        param.pono = invoiceRes.data?.pono
+        param.invDate = invoiceRes.data?.invDate == "" ? convertSystemDateIntoLocalTimeZoneWithStaticTime(date: Date()) : dateFormateWithoutTime(timeInterval: (invoiceRes.data?.invDate)!)
+        param.dueDate = invoiceRes.data?.duedate == "" ? convertSystemDateIntoLocalTimeZoneWithStaticTime(date: Date()) : dateFormateWithoutTime(timeInterval: (invoiceRes.data?.duedate)!)
+        param.newItem = invoiceRes.data?.newItem
+        param.itemData = editedItemData
+        param.groupByData = []
+        param.changeState = "0"
+        param.cur = invoiceRes.data?.cur // currently by default 0
+        param.isShowInList = invoiceRes.data!.isShowInList
+        param.shipto = invoiceRes.data!.shipto
+        
+        
+        
+        serverCommunicator(url: Service.updateInvoice, param: param.toDictionary) { (response, success) in
+            killLoader()
+            if(success){
+                let decoder = JSONDecoder()
+                if let decodedData = try? decoder.decode(InvoiceResponse.self, from: response as! Data) {
+                   // print(decodedData)
+                    
+                    if decodedData.success == true{
+                        
+                        self.showToast(message: self.displayMsg)
+                        
+                        self.invoiceRes = decodedData
+                        taxCalculationType = (self.invoiceRes.data?.taxCalculationType)!
+                        
+                        let data =  self.invoiceRes.data
+                        
+                        for item in (data!.itemData)! {
+                            var tax : Double = 0.0
+                            for tx in item.tax! {
+                                tax = tax + Double((tx.rate == "") ? roundOff(value:Double("0.00")!) : tx.rate!)!
+                            }
+                            
+                            let qty = (item.qty == "") ? "0" : item.qty!
+                            let rate = (item.rate == "") ? "0.0" : item.rate!
+                            let discount = (item.discount == "") ? "0.0" : item.discount!
+                            
+                            let totalAmount = calculateAmount(quantity: Double(qty)!, rate: Double(rate)!, tax: tax, discount: Double(discount)!)
+                            item.amount = roundOff(value: totalAmount)
+                            
+                            let taxAmount = calculateTaxAmount(rate: Double(rate)!, qty: Int(qty)!, taxRateInPercentage: tax)
+                            item.taxamnt = roundOff(value: taxAmount)
+                        }
+                        
+                        
+                        DispatchQueue.main.async{
+                            self.arryCount.text = "\(self.loc_listItem) \(data!.itemData!.count)"
+                           
+                            self.amountLbl.text = roundOff(value: Double(data!.total ?? "0.0")!) 
+                            if data!.itemData!.count == 0{
+                                self.showNoDataAlert()
+                            }else{
+                                self.hideNoDataAlert()
+                            }
+                                
+                            self.tableView.reloadData()
+                        }
+                    }else{
+                        
+                        if (decodedData.statusCode != nil) && decodedData.statusCode == "401" {
+                            ShowAlert(title:  getServerMsgFromLanguageJson(key: decodedData.message!), message:"" , controller: windowController, cancelButton: LanguageKey.ok as NSString, okButton: nil, style: .alert, callback: { (Ok, Cancel) in
+                                if (Ok){
+                                    DispatchQueue.main.async {
+                                        (UIApplication.shared.keyWindow?.rootViewController as! UINavigationController).popViewController(animated: true)
+                                    }
+                                }
+                            })
+                        }else{
+                            ShowError(message:  getServerMsgFromLanguageJson(key: decodedData.message!)!, controller: windowController)
+                        }
+                    }
+                }else{
+                    ShowError(message: AlertMessage.formatProblem, controller: windowController)
+                }
+            }else{
+                //ShowError(message: "Please try again!", controller: windowController)
+            }
+        }
+    }
+}
