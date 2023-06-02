@@ -18,7 +18,8 @@ target 'EyeOnTask' do
   pod 'SDWebImage'
   pod 'JJFloatingActionButton'
   #pod 'iOSPhotoEditor'
-  # pod 'BarcodeScanner'
+  pod 'BarcodeScanner'
+  pod 'BarcodeScanner'
 end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
